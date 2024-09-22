@@ -11,6 +11,14 @@ Incorporate the customized voting layer into ZeroFlow and use the cycle nn loss 
 + 2024.07.04 build singularity environment on iv-mind ([image](https://surfdrive.surf.nl/files/index.php/s/BzXUog7XhThwRUf))
 + 2024.07.01 build a new branch based on [SceneFlowZoo](https://github.com/kylevedder/SceneFlowZoo)
 
+## Installation
+```bash
+conda env create -f environment.yaml
+conda activate sf_tv
+# CUDA already install in python environment. I also tested others version like 11.3, 11.4, 11.7, 11.8 all works
+cd assets/cuda/mmcv && python ./setup.py install && cd ../../..
+cd assets/cuda/chamfer3D && python ./setup.py install && cd ../../..
+```
 ## Related work (and codebases):
 ### Unsupervised
 + [ICP-FLOW](https://github.com/yanconglin/ICP-Flow)
@@ -18,6 +26,9 @@ Incorporate the customized voting layer into ZeroFlow and use the cycle nn loss 
 + [ZeroFlow](https://github.com/kylevedder/zeroflow)
 + [SeFlow](https://github.com/KTH-RPL/SeFlow)
 ### Supervised
+
++ [DeFlow](https://arxiv.org/abs/2401.16122): ICRA 2024
++ [FastFlow3d](https://arxiv.org/abs/2103.01306): RA-L 2021
 
 ## Train 
 TODO
