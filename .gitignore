@@ -1,3 +1,6 @@
+data/
+__pycache__/
+wandb/
 
 *.json
 logs/*

@@ -105,7 +105,6 @@ def main(cfg):
 
     if cfg.wandb_mode != "disabled":
         logger = WandbLogger(save_dir=output_dir,
-                            entity="kth-rpl",
                             project=f"{cfg.wandb_project_name}", 
                             name=f"{cfg.output}",
                             offline=(cfg.wandb_mode == "offline"),
