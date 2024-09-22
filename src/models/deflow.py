@@ -59,6 +59,7 @@ class DeFlow(nn.Module):
         transform_pc0s = []
         for batch_id in range(batch_sizes):
             selected_pc0 = batch["pc0"][batch_id]
+            print(f"batch_id{batch_id}, selected_pc0: {selected_pc0.shape}")
             self.timer[0][0].start("pose")
             with torch.no_grad():
                 if 'ego_motion' in batch:
@@ -93,7 +94,8 @@ class DeFlow(nn.Module):
             torch.cat((pc0_before_pseudoimages, pc1_before_pseudoimages),
                     dim=1), grid_flow_pseudoimage, pc0_voxel_infos_lst)
         self.timer[3].stop()
-
+        
+        print("flows shape: ", len(flows), flows[0].shape) 
         pc0_points_lst = [e["points"] for e in pc0_voxel_infos_lst]
         pc1_points_lst = [e["points"] for e in pc1_voxel_infos_lst]
 

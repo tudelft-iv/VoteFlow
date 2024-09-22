@@ -7,9 +7,11 @@ dependencies:
   - pytorch::pytorch=2.0.0
   - pytorch::torchvision
   - pytorch::pytorch-cuda=11.8
+  - pytorch3d::pytorch3d
   - nvidia/label/cuda-11.8.0::cuda
   - lightning==2.0.1
   - mkl==2024.0.0
+  - seaborn
   - numba
   - numpy
   - pandas
@@ -28,6 +30,7 @@ dependencies:
   - pip:
     - open3d==0.18.0
     - dztimer
+    - torch-scatter
     - av2==0.2.1
 
 # Reason about the version fixed:
