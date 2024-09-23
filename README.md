@@ -19,6 +19,15 @@ conda activate sf_tv
 cd assets/cuda/mmcv && python ./setup.py install && cd ../../..
 cd assets/cuda/chamfer3D && python ./setup.py install && cd ../../..
 ```
+
+## Data Preprocess
+
+```bash
+python dataprocess/extract_av2.py --av2_type sensor --data_mode train --argo_dir data/Argoverse2 --output_dir data/Argoverse2/preprocess_v2
+python dataprocess/extract_av2.py --av2_type sensor --data_mode val --mask_dir data/Argoverse2/3d_scene_flow
+python dataprocess/extract_av2.py --av2_type sensor --data_mode test --mask_dir data/Argoverse2/3d_scene_flow
+```
+
 ## Related work (and codebases):
 ### Unsupervised
 + [ICP-FLOW](https://github.com/yanconglin/ICP-Flow)

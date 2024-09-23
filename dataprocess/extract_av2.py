@@ -14,7 +14,7 @@
 """
 
 import os
-os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["OMP_NUM_THREADS"] = "12"
 
 from av2.datasets.sensor.av2_sensor_dataloader import convert_pose_dataframe_to_SE3
 from av2.structures.sweep import Sweep
