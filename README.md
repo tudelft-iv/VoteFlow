@@ -23,9 +23,9 @@ cd assets/cuda/chamfer3D && python ./setup.py install && cd ../../..
 ## Data Preprocess
 
 ```bash
-python dataprocess/extract_av2.py --av2_type sensor --data_mode train --argo_dir data/Argoverse2 --output_dir data/Argoverse2/preprocess_v2
-python dataprocess/extract_av2.py --av2_type sensor --data_mode val --mask_dir data/Argoverse2/3d_scene_flow
-python dataprocess/extract_av2.py --av2_type sensor --data_mode test --mask_dir data/Argoverse2/3d_scene_flow
+python dataprocess/extract_av2.py --av2_type sensor --data_mode train --argo_dir /datasets/Argoverse2 --output_dir /datasets/Argoverse2/preprocess_v2 --nproc 24
+python dataprocess/extract_av2.py --av2_type sensor --data_mode val --argo_dir /datasets/Argoverse2 --mask_dir /datasets/Argoverse2/3d_scene_flow --nproc 24
+python dataprocess/extract_av2.py --av2_type sensor --data_mode test --argo_dir /datasets/Argoverse2 --mask_dir /datasets/Argoverse2/3d_scene_flow --nproc 24
 ```
 
 ## Related work (and codebases):
