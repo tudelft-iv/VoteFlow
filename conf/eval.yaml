@@ -1,6 +1,6 @@
 
-dataset_path: /home/kin/data/av2/preprocess_v2/sensor
-checkpoint: /home/kin/model_zoo/deflow.ckpt
+dataset_path: /home/shimingwang/workspace/sf_tv/sceneflow_tv_se/data/argoverse2_demo/sensor
+checkpoint: /home/shimingwang/workspace/sf_tv/sceneflow_tv_se/checkpoints/seflow_best.ckpt
 av2_mode: val # [val, test]
 save_res: False # [True, False]
 

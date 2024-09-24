@@ -1,4 +1,4 @@
-dataset_path: /home/shimingwang/workspace/sf_tv/sceneflow_tv_se/data/argoverse2_demo/sensor/val
+dataset_path: ./data/argoverse2_demo/sensor/val
 checkpoint: /home/shimingwang/workspace/sf_tv/sceneflow_tv_se/checkpoints/seflow_best.ckpt
 res_name: # if None will directly be the `model_name.ckpt` in checkpoint path
 

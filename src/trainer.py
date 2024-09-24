@@ -16,6 +16,7 @@ import numpy as np
 import torch
 import torch.optim as optim
 from pathlib import Path
+import pickle
 
 from lightning import LightningModule
 from hydra.utils import instantiate
@@ -301,7 +302,19 @@ class ModelWrapper(LightningModule):
         # write final_flow into the dataset.
         key = str(batch['timestamp'])
         scene_id = batch['scene_id']
-
+        ## hard code to save outputs
+        save_dir = 'outputs/original_vis_outputs'
+        sub_dir = os.path.join(save_dir,f'{scene_id}')
+        if not os.path.exists(sub_dir):
+                os.makedirs(sub_dir)
+        file = os.path.join(sub_dir,f'{key}.pkl')
+        data_dict =dict(
+            input_batch = batch,
+            model_output = res_dict,
+            final_flow = final_flow
+        )
+        pickle.dump(data_dict, open(file, 'wb'))
+        
         with h5py.File(os.path.join(self.dataset_path, f'{scene_id}.h5'), 'r+') as f:
             if self.vis_name in f[key]:
                 del f[key][self.vis_name]
