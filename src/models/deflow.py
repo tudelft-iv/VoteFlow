@@ -107,10 +107,10 @@ class DeFlow(nn.Module):
         pc0_valid_point_idxes = [e["point_idxes"] for e in pc0_voxel_infos_lst]
         pc1_valid_point_idxes = [e["point_idxes"] for e in pc1_voxel_infos_lst]
 
-        print('flow:', len(flows), flows[0].shape, flows[1].shape)
-        print('pose_flow:', len(pose_flows), pose_flows[0].shape, pose_flows[1].shape)
-        print('pc0_points_lst:', len(pc0_points_lst), pc0_points_lst[0].shape, pc0_points_lst[1].shape)
-        print('pc1_points_lst:', len(pc1_points_lst), pc1_points_lst[0].shape, pc1_points_lst[1].shape)
+        # print('flow:', len(flows), flows[0].shape, flows[1].shape)
+        # print('pose_flow:', len(pose_flows), pose_flows[0].shape, pose_flows[1].shape)
+        # print('pc0_points_lst:', len(pc0_points_lst), pc0_points_lst[0].shape, pc0_points_lst[1].shape)
+        # print('pc1_points_lst:', len(pc1_points_lst), pc1_points_lst[0].shape, pc1_points_lst[1].shape)
         model_res = {
             "flow": flows,
             'pose_flow': pose_flows,

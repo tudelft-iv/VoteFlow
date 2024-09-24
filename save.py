@@ -41,8 +41,7 @@ def main(cfg):
     mymodel = ModelWrapper.load_from_checkpoint(cfg.checkpoint, cfg=cfg, eval=True)
 
     wandb_logger = WandbLogger(save_dir=output_dir,
-                               entity="kth-rpl",
-                               project=f"deflow-eval", 
+                               project=f"sceneflow_translation_voting", 
                                name=f"{cfg.output}",
                                offline=True)
     

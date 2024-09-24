@@ -301,6 +301,7 @@ class ModelWrapper(LightningModule):
         # write final_flow into the dataset.
         key = str(batch['timestamp'])
         scene_id = batch['scene_id']
+
         with h5py.File(os.path.join(self.dataset_path, f'{scene_id}.h5'), 'r+') as f:
             if self.vis_name in f[key]:
                 del f[key][self.vis_name]
