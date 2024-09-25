@@ -106,7 +106,7 @@ def main(cfg):
     if cfg.wandb_mode != "disabled":
         logger = WandbLogger(save_dir=output_dir,
                             project=f"{cfg.wandb_project_name}", 
-                            name=f"{cfg.output}",
+                            name=f"{cfg.wandb_run_name}",
                             offline=(cfg.wandb_mode == "offline"),
                             log_model=(True if cfg.wandb_mode == "online" else False))
         logger.watch(model, log_graph=False)

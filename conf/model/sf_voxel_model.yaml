@@ -1,0 +1,12 @@
+name: sf_voxel_model
+
+target:
+  _target_: src.models.SFVoxelModel
+  voxel_size: ${voxel_size}
+  point_cloud_range: ${point_cloud_range}
+  nframes: 1
+  m: 8
+  n: 64
+
+val_monitor: val/Dynamic/Mean
+exp_id: ${model.name}_m_{model.traget.m}_n_{model.target.n}

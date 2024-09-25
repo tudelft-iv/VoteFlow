@@ -23,11 +23,13 @@ class SFVoxelModel(nn.Module):
                  nframes=1, 
                  m=8, 
                  n=64, 
-                 range_size=(51.2, 51.2, 3), 
-                 voxel_size=(0.2, 0.2, 0.2)):
+                 point_cloud_range = [-51.2, -51.2, -3, 51.2, 51.2, 3], 
+                 voxel_size=(0.2, 0.2, 0.2),
+                 grid_feature_size = [512, 512],
+                 **kwargs):
         super(SFVoxelModel, self).__init__()
         
-        assert len(range_size)==3
+        assert len(point_cloud_range)==6
         assert len(voxel_size)==3
 
         # a hack there, may and may not have any impact depends on the setting.
@@ -44,9 +46,8 @@ class SFVoxelModel(nn.Module):
         self.nz = nz*2 # +/-z
         print('n x/y/z: ', self.nx, self.ny, self.nz)
 
-        pseudo_image_dims = (int(range_size[0]/voxel_size[0])*2, int(range_size[1]/voxel_size[1])*2) # ignore z dimension
-        print('pseduo_image_dims: ', pseudo_image_dims)
-
+        pseudo_image_dims = grid_feature_size[:2] #int((point_cloud_range[3]-point_cloud_range[0])/voxel_size[0]), int((point_cloud_range[4]-point_cloud_range[1])/voxel_size[1])) # ignore z dimension
+    
         self.nframes = nframes
         self.m = m # m knn within src, for each src point
         self.radius_src = math.ceil(max(2.0/voxel_size[0], 2.0/voxel_size[1])) # define a search window (in meters) within src voxels, aka the rigid motion window
@@ -54,7 +55,7 @@ class SFVoxelModel(nn.Module):
         self.radius_dst = max(self.nx, self.ny) # define a search window for a src voxel in dst voxels for calculating translations
         print('radius: ', self.radius_src, self.radius_dst)
 
-        self.range_size = range_size
+        self.point_cloud_range = point_cloud_range
         self.voxel_size = voxel_size
         self.pseudo_image_dims = pseudo_image_dims
         
@@ -66,7 +67,7 @@ class SFVoxelModel(nn.Module):
 
         self.embedder = DynamicEmbedder(voxel_size=voxel_size,
                                 pseudo_image_dims=pseudo_image_dims,
-                                point_cloud_range=(-range_size[0], -range_size[1], -range_size[2], range_size[0], range_size[1], range_size[2]),
+                                point_cloud_range=point_cloud_range,
                                 feat_channels=32)
         
         self.timer = dztimer.Timing()
@@ -127,12 +128,12 @@ class SFVoxelModel(nn.Module):
         # padding
         for i, (point_voxel_idxs_src_, point_voxel_idxs_dst_, unq_voxels_src_, unq_voxels_dst_, knn_idxs_src_, knn_idxs_dst_) \
             in enumerate( zip(point_voxel_idxs_src, point_voxel_idxs_dst, unq_voxels_src, unq_voxels_dst, knn_idxs_src, knn_idxs_dst) ):
-            unq_voxels_src_ = pad_to_batch(unq_voxels_src_, l_voxels)
+            unq_voxels_src_= pad_to_batch(unq_voxels_src_, l_voxels)
             unq_voxels_dst_ = pad_to_batch(unq_voxels_dst_, l_voxels)
             knn_idxs_src_ = pad_to_batch(knn_idxs_src_, l_voxels)
-            knn_idxs_dst_ = pad_to_batch(knn_idxs_dst_, l_voxels)
-            point_voxel_idxs_src_ = pad_to_batch(point_voxel_idxs_src_, l_points)
-            point_voxel_idxs_dst_ = pad_to_batch(point_voxel_idxs_dst_, l_points)
+            knn_idxs_dst_= pad_to_batch(knn_idxs_dst_, l_voxels)
+            point_voxel_idxs_src_= pad_to_batch(point_voxel_idxs_src_, l_points)
+            point_voxel_idxs_dst_= pad_to_batch(point_voxel_idxs_dst_, l_points)
 
             unq_voxels_src[i] = unq_voxels_src_
             unq_voxels_dst[i] = unq_voxels_dst_
@@ -212,26 +213,28 @@ class SFVoxelModel(nn.Module):
         flows = self.decoder(feats_cat)
         self.timer[5].stop()
         
-        flows_inflate = torch.zeros(points_src.shape, device=points_src.device, dtype=points_src.dtype) - max(self.range_size) # indicators for invalid flows
-        assert (point_masks_src>0).sum() == (point_voxel_idxs_src>=0).sum()
-        idxs_point = torch.nonzero(point_masks_src>0, as_tuple=True)
-        idxs_flow = torch.nonzero(point_voxel_idxs_src>=0, as_tuple=True)
-        flows_inflate[idxs_point] = flows[idxs_flow]
-        
         pc0_points_lst = [e["points"] for e in voxel_infos_lst_src]
         pc1_points_lst = [e["points"] for e in voxel_infos_lst_dst]
         
         pc0_valid_point_idxes = [e["point_idxes"] for e in voxel_infos_lst_src]
         pc1_valid_point_idxes = [e["point_idxes"] for e in voxel_infos_lst_dst]
         
+        flows_reshape = []
+        for (flow, valid_pts) in zip(flows, pc0_valid_point_idxes):
+            flow = flow[:valid_pts.shape[0], :]
+            flows_reshape.append(flow)
+        # print('points_src', points_src.shape)
+        # print('pc0_points_lst:', len(pc0_points_lst), pc0_points_lst[0].shape, pc0_points_lst[1].shape)
+        # print('flow:', len(flows), flows[0].shape, flows[1].shape)
+        # print('resahpe_flow:', len(flows_reshape), flows_reshape[0].shape, flows_reshape[1].shape)
+        # print('point_masks_src:', point_masks_src.shape, sum(point_masks_src[0]), sum(point_masks_src[1]))
+
         model_res = {
-            "flow": flows_inflate,
+            "flow": flows_reshape,
             "pc0_points_lst": pc0_points_lst,
             "pc1_points_lst": pc1_points_lst,
             "pc0_valid_point_idxes": pc0_valid_point_idxes,
             "pc1_valid_point_idxes": pc1_valid_point_idxes,
-            "point_masks_src": point_masks_src,
-            "point_masks_dst": point_masks_dst,
         }
         
         return model_res

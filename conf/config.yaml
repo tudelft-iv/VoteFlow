@@ -3,10 +3,11 @@ defaults:
   - hydra: default
   - model: deflow
   
-slurm_id: 00000
+exp_id: ${model.exp_id}_ep_${epochs}_lr_${lr}_bs_${batch_size}
 
 wandb_mode: disabled # [offline, disabled, online]
-wandb_project_name: seflow
+wandb_project_name: sceneflow_translation_voting
+wandb_run_name: ${exp_id}
 
 train_data: data/argoverse2_demo/sensor/train
 val_data: data/argoverse2_demo/sensor/val
@@ -27,7 +28,7 @@ gradient_clip_val: 5.0
 
 # optimizer ==> Adam
 lr: 2e-6
-loss_fn: seflowLoss # choices: [ff3dLoss, zeroflowLoss, deflowLoss, seflowLoss]
+loss_fn: warpedLoss # choices: [ff3dLoss, zeroflowLoss, deflowLoss, seflowLoss]
 add_seloss: # {chamfer_dis: 1.0, static_flow_loss: 1.0, dynamic_chamfer_dis: 1.0, cluster_based_pc0pc1: 1.0}
 
 # log settings
@@ -37,6 +38,6 @@ val_every: 3 # epochs
 save_top_model: 5 # top_k model will be saved.
 
 # -----> Model and Task Parameters
-voxel_size: [0.2, 0.2, 6]
+voxel_size: [0.2, 0.2, 0.2]
 point_cloud_range: [-51.2, -51.2, -3, 51.2, 51.2, 3]
 num_frames: 2

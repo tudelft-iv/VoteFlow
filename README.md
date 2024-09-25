@@ -40,7 +40,13 @@ python dataprocess/extract_av2.py --av2_type sensor --data_mode test --argo_dir 
 + [FastFlow3d](https://arxiv.org/abs/2103.01306): RA-L 2021
 
 ## Train 
-TODO
+``` python 
+python train.py model=sf_voxel_model lr=1e-3 epochs=500 batch_size=2 loss_fn=warpedLoss
+```
+
+```python
+python train.py model=deflow lr=2e-4 epochs=20 batch_size=2 loss_fn=deflowLoss
+```
 
 ## Inference and Visualization
 TODO

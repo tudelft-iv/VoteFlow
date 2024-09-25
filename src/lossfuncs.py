@@ -160,7 +160,7 @@ def ff3dLoss(res_dict):
     return {'loss': error.mean()}
 
 
-def warped_pc_loss(res_dict, dist_threshold=3.33):
+def warpedLoss(res_dict, dist_threshold=3.33):
     pred = res_dict['est_flow']
     
     pc0 = res_dict['pc0']
@@ -169,9 +169,11 @@ def warped_pc_loss(res_dict, dist_threshold=3.33):
     warped_pc = pc0 + pred
     target_pc = pc1
     
-    assert warped_pc.ndim == 3, f"warped_pc.ndim = {warped_pc.ndim}, not 3; shape = {warped_pc.shape}"
-    assert target_pc.ndim == 3, f"target_pc.ndim = {target_pc.ndim}, not 3; shape = {target_pc.shape}"
-
+    # assert warped_pc.ndim == 3, f"warped_pc.ndim = {warped_pc.ndim}, not 3; shape = {warped_pc.shape}"
+    # assert target_pc.ndim == 3, f"target_pc.ndim = {target_pc.ndim}, not 3; shape = {target_pc.shape}"
+    if warped_pc.ndim == 2:
+        warped_pc = warped_pc.unsqueeze(0)
+        target_pc = target_pc.unsqueeze(0)
     loss = 0
 
     if dist_threshold is None:
@@ -194,4 +196,4 @@ def warped_pc_loss(res_dict, dist_threshold=3.33):
     loss += target_to_warped_distances[
         target_to_warped_distances < dist_threshold].mean()
 
-    return loss
+    return {'loss': loss}
