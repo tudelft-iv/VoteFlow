@@ -12,7 +12,7 @@ wandb_project_name: sceneflow_translation_voting
 wandb_run_name: ${exp_id}
 
 train_data: data/Argoverse2/preprocess_v2/sensor/train
-val_data: ddata/Argoverse2/preprocess_v2/sensor/val
+val_data: data/Argoverse2/preprocess_v2/sensor/val
 
 output: ${model.name}-${slurm_id}
 
