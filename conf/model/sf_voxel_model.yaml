@@ -9,4 +9,4 @@ target:
   n: 64
 
 val_monitor: val/Dynamic/Mean
-exp_id: ${model.name}_m_{model.traget.m}_n_{model.target.n}
+exp_id: ${model.name}_m_${model.target.m}_n_${model.target.n}

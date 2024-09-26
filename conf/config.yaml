@@ -2,8 +2,10 @@
 defaults:
   - hydra: default
   - model: deflow
-  
-exp_id: ${model.exp_id}_ep_${epochs}_lr_${lr}_bs_${batch_size}
+
+slurm_id: 00000000
+exp_note: None
+exp_id: ${model.exp_id}_ep_${epochs}_lr_${lr}_bs_${batch_size}_${exp_note}
 
 wandb_mode: disabled # [offline, disabled, online]
 wandb_project_name: sceneflow_translation_voting

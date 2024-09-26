@@ -23,7 +23,7 @@ def visualize_pcd_list(pc_dict_list):
         np.concatenate(pc_list, axis=0),
         np.concatenate(color_list, axis=0),
     num_colors=3, 
-    title=f'visualize input: {name_list[0]}-r, {name_list[1]}-g, {name_list[2]}-b')
+    title=f'visualize input: {name_list[0]}-r, {name_list[1]}-g')
 
 
 def vis(index,
@@ -41,6 +41,7 @@ def vis(index,
         'timestamp': timestamp,
     }
     
+    print(vis_name)
     if load_dict:
         print(f"Load from dict")
         pkl_file_path = os.path.join(save_dir, scene_id, f'{timestamp}.pkl')
@@ -94,21 +95,22 @@ def vis(index,
     print(f"pc1_no_ground: {pc1_no_ground.shape}")
 
     print(f"flow: {flow.shape}, flow_max: {flow.max()}, flow_min: {flow.min()}")    
-    
+    mask = np.linalg.norm(data_dict[vis_name][~gm0], axis = -1) > 3.33
+    print('mask > 3.33:', sum(mask))
     pc_list = [
-        dict(
-            pc = pc0_no_ground,
-            name = 'pc0'
-        ),
+        # dict(
+        #     pc = transform_pc0_no_ground,
+        #     name = 'pc0'
+        # ),
 
         dict(
-            pc = pc0_gt_flow_no_ground,
-            name = 'pc0+gt_flow'
+            pc = pc0_flow_no_ground,
+            name = 'pc0+flow'
         ) ,
         
         dict(
-            pc = pc1_no_ground,
-            name = 'pc1'
+            pc = pc0_gt_flow_no_ground,
+            name = 'pc0+gt_flow'
         ),
     ]
     visualize_pcd_list(pc_list)

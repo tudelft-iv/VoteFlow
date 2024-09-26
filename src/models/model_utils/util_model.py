@@ -53,7 +53,7 @@ class Decoder(nn.Module):
     def __init__(self, dim_input=16, dim_output=3):
         super().__init__()
         # self.linear = nn.Linear(m*dim_input, dim_output)
-        layer_size=1
+        layer_size=4
         filter_size=128
         decoder = []
         decoder.append(torch.nn.Sequential(torch.nn.Linear(dim_input, filter_size)))

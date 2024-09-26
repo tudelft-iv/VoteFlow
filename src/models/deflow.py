@@ -60,8 +60,8 @@ class DeFlow(nn.Module):
         transform_pc0s = []
         for batch_id in range(batch_sizes):
             selected_pc0 = batch["pc0"][batch_id]
-            print(f"batch_id{batch_id}, pc0: {selected_pc0.shape}")
-            print(f'batch_id{batch_id},pc1: {batch["pc1"][batch_id].shape}')
+            # print(f"batch_id{batch_id}, pc0: {selected_pc0.shape}")
+            # print(f'batch_id{batch_id},pc1: {batch["pc1"][batch_id].shape}')
             self.timer[0][0].start("pose")
             with torch.no_grad():
                 if 'ego_motion' in batch:
@@ -80,8 +80,8 @@ class DeFlow(nn.Module):
         pc0s = torch.stack(transform_pc0s, dim=0)
         pc1s = batch["pc1"]
         
-        print('pc0s:', pc0s.shape)
-        print('pc1s:', pc1s.shape)  
+        # print('pc0s:', pc0s.shape)
+        # print('pc1s:', pc1s.shape)  
         self.timer[0].stop()
 
         self.timer[1].start("Voxelization")
@@ -100,17 +100,17 @@ class DeFlow(nn.Module):
                     dim=1), grid_flow_pseudoimage, pc0_voxel_infos_lst)
         self.timer[3].stop()
         
-        print("flows shape: ", len(flows), flows[0].shape) 
+        # print("flows shape: ", len(flows), flows[0].shape) 
         pc0_points_lst = [e["points"] for e in pc0_voxel_infos_lst]
         pc1_points_lst = [e["points"] for e in pc1_voxel_infos_lst]
 
         pc0_valid_point_idxes = [e["point_idxes"] for e in pc0_voxel_infos_lst]
         pc1_valid_point_idxes = [e["point_idxes"] for e in pc1_voxel_infos_lst]
 
-        print('flow:', len(flows), flows[0].shape, flows[1].shape)
-        print('pose_flow:', len(pose_flows), pose_flows[0].shape, pose_flows[1].shape)
-        print('pc0_points_lst:', len(pc0_points_lst), pc0_points_lst[0].shape, pc0_points_lst[1].shape)
-        print('pc1_points_lst:', len(pc1_points_lst), pc1_points_lst[0].shape, pc1_points_lst[1].shape)
+        # print('flow:', len(flows), flows[0].shape, flows[1].shape)
+        # print('pose_flow:', len(pose_flows), pose_flows[0].shape, pose_flows[1].shape)
+        # print('pc0_points_lst:', len(pc0_points_lst), pc0_points_lst[0].shape, pc0_points_lst[1].shape)
+        # print('pc1_points_lst:', len(pc1_points_lst), pc1_points_lst[0].shape, pc1_points_lst[1].shape)
         model_res = {
             "flow": flows,
             'pose_flow': pose_flows,

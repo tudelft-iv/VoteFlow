@@ -190,10 +190,7 @@ def warpedLoss(res_dict, dist_threshold=3.33):
     target_to_warped_knn = knn_points(p1=target_pc, p2=warped_pc, K=1)
     target_to_warped_distances = target_to_warped_knn.dists[0]
     # Throw out distances that are too large (beyond the dist threshold).
-    loss += warped_to_target_distances[
-        warped_to_target_distances < dist_threshold].mean()
-
-    loss += target_to_warped_distances[
-        target_to_warped_distances < dist_threshold].mean()
+    loss += warped_to_target_distances[warped_to_target_distances < dist_threshold].mean()
+    loss += target_to_warped_distances[target_to_warped_distances < dist_threshold].mean()
 
     return {'loss': loss}
