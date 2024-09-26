@@ -2,7 +2,7 @@
 defaults:
   - hydra: default
   - model: deflow
-
+  
 slurm_id: 00000000
 exp_note: None
 exp_id: ${model.exp_id}_ep_${epochs}_lr_${lr}_bs_${batch_size}_${exp_note}
@@ -11,8 +11,8 @@ wandb_mode: disabled # [offline, disabled, online]
 wandb_project_name: sceneflow_translation_voting
 wandb_run_name: ${exp_id}
 
-train_data: data/argoverse2_demo/sensor/train
-val_data: data/argoverse2_demo/sensor/val
+train_data: data/Argoverse2/preprocess_v2/sensor/train
+val_data: ddata/Argoverse2/preprocess_v2/sensor/val
 
 output: ${model.name}-${slurm_id}
 
