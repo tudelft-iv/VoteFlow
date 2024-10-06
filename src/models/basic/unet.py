@@ -41,31 +41,40 @@ class FastFlow3DUNet(nn.Module):
     """
     Standard UNet with a few modifications:
      - Uses Bilinear interpolation instead of transposed convolutions
+    
+    Note by Shiming:
+    - modified to the flexible number of input and output channels
     """
 
-    def __init__(self) -> None:
+    def __init__(self, input_channels=32, output_channels=64) -> None:
         super().__init__()
-
-        self.encoder_step_1 = nn.Sequential(ConvWithNorms(32, 64, 3, 2, 1),
-                                            ConvWithNorms(64, 64, 3, 1, 1),
-                                            ConvWithNorms(64, 64, 3, 1, 1),
-                                            ConvWithNorms(64, 64, 3, 1, 1))
-        self.encoder_step_2 = nn.Sequential(ConvWithNorms(64, 128, 3, 2, 1),
-                                            ConvWithNorms(128, 128, 3, 1, 1),
-                                            ConvWithNorms(128, 128, 3, 1, 1),
-                                            ConvWithNorms(128, 128, 3, 1, 1),
-                                            ConvWithNorms(128, 128, 3, 1, 1),
-                                            ConvWithNorms(128, 128, 3, 1, 1))
-        self.encoder_step_3 = nn.Sequential(ConvWithNorms(128, 256, 3, 2, 1),
-                                            ConvWithNorms(256, 256, 3, 1, 1),
-                                            ConvWithNorms(256, 256, 3, 1, 1),
-                                            ConvWithNorms(256, 256, 3, 1, 1),
-                                            ConvWithNorms(256, 256, 3, 1, 1),
-                                            ConvWithNorms(256, 256, 3, 1, 1))
-        self.decoder_step1 = UpsampleSkip(512, 256, 256)
-        self.decoder_step2 = UpsampleSkip(256, 128, 128)
-        self.decoder_step3 = UpsampleSkip(128, 64, 64)
-        self.decoder_step4 = nn.Conv2d(64, 64, 3, 1, 1)
+        
+        c0 = input_channels
+        c1 = c0 * 2 # 64
+        c2 = c0 * 4 # 128
+        c3 = c0 * 8 # 256
+        c4 = c0 * 16 # 512
+        
+        self.encoder_step_1 = nn.Sequential(ConvWithNorms(c0, c1, 3, 2, 1),
+                                            ConvWithNorms(c1, c1, 3, 1, 1),
+                                            ConvWithNorms(c1, c1, 3, 1, 1),
+                                            ConvWithNorms(c1, c1, 3, 1, 1))
+        self.encoder_step_2 = nn.Sequential(ConvWithNorms(c1, c2, 3, 2, 1),
+                                            ConvWithNorms(c2, c2, 3, 1, 1),
+                                            ConvWithNorms(c2, c2, 3, 1, 1),
+                                            ConvWithNorms(c2, c2, 3, 1, 1),
+                                            ConvWithNorms(c2, c2, 3, 1, 1),
+                                            ConvWithNorms(c2, c2, 3, 1, 1))
+        self.encoder_step_3 = nn.Sequential(ConvWithNorms(c2, c3, 3, 2, 1),
+                                            ConvWithNorms(c3, c3, 3, 1, 1),
+                                            ConvWithNorms(c3, c3, 3, 1, 1),
+                                            ConvWithNorms(c3, c3, 3, 1, 1),
+                                            ConvWithNorms(c3, c3, 3, 1, 1),
+                                            ConvWithNorms(c3, c3, 3, 1, 1))
+        self.decoder_step1 = UpsampleSkip(c4, c3, c3)
+        self.decoder_step2 = UpsampleSkip(c3, c2, c2)
+        self.decoder_step3 = UpsampleSkip(c2, c1, c1)
+        self.decoder_step4 = nn.Conv2d(c1, output_channels, 3, 1, 1)
 
     def forward(self, pc0_B: torch.Tensor,
                 pc1_B: torch.Tensor) -> torch.Tensor:

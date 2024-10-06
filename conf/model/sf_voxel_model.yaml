@@ -7,6 +7,8 @@ target:
   nframes: 1
   m: 8
   n: 64
+  input_channels: 32
+  output_channels: 16
 
 val_monitor: val/Dynamic/Mean
 exp_id: ${model.name}_m_${model.target.m}_n_${model.target.n}

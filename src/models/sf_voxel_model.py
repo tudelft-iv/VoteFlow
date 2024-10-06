@@ -8,6 +8,7 @@ from torch_scatter import scatter_max
 import pytorch3d.ops as pytorch3d_ops
 
 from .basic.encoder import DynamicEmbedder
+from .basic.decoder import LinearDecoder
 from .basic import cal_pose0to1
 
 from .ht.ht_cuda import HT_CUDA
@@ -23,6 +24,8 @@ class SFVoxelModel(nn.Module):
                  nframes=1, 
                  m=8, 
                  n=64, 
+                 input_channels=32,
+                 output_channels=64, 
                  point_cloud_range = [-51.2, -51.2, -3, 51.2, 51.2, 3], 
                  voxel_size=(0.2, 0.2, 0.2),
                  grid_feature_size = [512, 512],
@@ -59,16 +62,16 @@ class SFVoxelModel(nn.Module):
         self.voxel_size = voxel_size
         self.pseudo_image_dims = pseudo_image_dims
         
-        self.backbone = Backbone(32, 16)
-        # self.backbone = FastFlowUNet(32, 16)
+        # self.backbone = Backbone(input_channels, output_channels)
+        self.backbone = FastFlowUNet(input_channels, output_channels) ## output_channel 64
         self.vote = HT_CUDA(self.ny, self.nx, self.nz)
-        self.volconv = VolConv(self.ny, self.nx, self.nz, c=16*2, dim_output=16)
-        self.decoder = Decoder(dim_input=32*2+16+16, dim_output=3)
-
+        self.volconv = VolConv(self.ny, self.nx, self.nz, c= output_channels * 2, dim_output=output_channels)
+        self.decoder = Decoder(dim_input= output_channels * 2 + input_channels*2 , dim_output=3)
+        
         self.embedder = DynamicEmbedder(voxel_size=voxel_size,
                                 pseudo_image_dims=pseudo_image_dims,
                                 point_cloud_range=point_cloud_range,
-                                feat_channels=32)
+                                feat_channels=input_channels)
         
         self.timer = dztimer.Timing()
         
@@ -174,7 +177,7 @@ class SFVoxelModel(nn.Module):
         return feats_per_point
 
     # adapted from zeroflow
-    def concat_feats(self, feats_vote, feats_before, feats_after, voxelizer_infos):
+    def concat_feats(self, feats_vote, feats_before, feats_after):
         feats = torch.cat([feats_vote, feats_before, feats_after], dim=-1)
         return feats
 
@@ -202,6 +205,7 @@ class SFVoxelModel(nn.Module):
         
         self.timer[4].start("Voting")
         vols= self.vote(feats_voxel_src, feats_voxel_dst, voxels_src, voxels_dst, knn_idxs_src, knn_idxs_dst) 
+        # print('vols:', vols.shape)  
         vols = self.volconv(vols)
         self.timer[4].stop()
         
@@ -209,7 +213,14 @@ class SFVoxelModel(nn.Module):
         feats_point_src_vol = self.extract_point_from_voxel(vols, point_voxel_idxs_src)
         feats_point_src_init = self.extract_point_from_image(torch.cat([pseudoimages_src, pseudoimages_dst], dim=1), voxels_src, point_voxel_idxs_src)
         feats_point_src_grid = self.extract_point_from_image(pseudoimages_grid,  voxels_src, point_voxel_idxs_src)
-        feats_cat = self.concat_feats(feats_point_src_vol, feats_point_src_init, feats_point_src_grid, voxel_infos_lst_src)
+        feats_cat = self.concat_feats(feats_point_src_vol, feats_point_src_init, feats_point_src_grid)
+        # print('feats_points_src_vol:', feats_point_src_vol.shape)
+        # print('pseudoimages_src:', pseudoimages_src.shape)
+        # print('pseudoimages_dst:', pseudoimages_dst.shape)
+        # print('feats_points_src_init:', feats_point_src_init.shape)
+        # print('feats_points_src_grid:', feats_point_src_grid.shape)
+        
+        # print('feats_cat:', feats_cat.shape)
         flows = self.decoder(feats_cat)
         self.timer[5].stop()
         

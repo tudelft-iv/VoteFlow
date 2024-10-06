@@ -177,10 +177,12 @@ class ConvGRUDecoder(nn.Module):
         # [N, 128] -> [N, 128, 1]
         concatenated_vectors = concatenated_vectors.unsqueeze(2)
 
+        print(' In GRU decoder: before called gru')
         for itr in range(self.num_iters):
             concatenated_vectors = self.gru(concatenated_vectors, point_offsets_feature.unsqueeze(2))
-
+        print(' In GRU decoder: after called gru')
         flow = self.decoder(torch.cat([concatenated_vectors.squeeze(2), point_offsets_feature], dim=1))
+        print(' In GRU decoder: after decoder')
         return flow
 
     def forward(

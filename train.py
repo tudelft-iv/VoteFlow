@@ -28,6 +28,7 @@ from pathlib import Path
 from src.dataset import HDF5Dataset, collate_fn_pad
 from src.trainer import ModelWrapper
 
+os.environ["PYTORCH_USE_CUDA_DSA"] = "1"
 os.environ["HYDRA_FULL_ERROR"] = "1"  # for debugging
 os.environ["CUDA_LAUNCH_BLOCKING"] = "1"  # for debugging
 os.environ["CUDA_DEVICE_ORDER"]    = "PCI_BUS_ID"
@@ -152,4 +153,5 @@ def main(cfg):
     wandb.finish()
 
 if __name__ == "__main__":
+    torch.backends.cudnn.enabled = False
     main()
