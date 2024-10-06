@@ -28,6 +28,14 @@ from pathlib import Path
 from src.dataset import HDF5Dataset, collate_fn_pad
 from src.trainer import ModelWrapper
 
+os.environ["HYDRA_FULL_ERROR"] = "1"  # for debugging
+os.environ["CUDA_LAUNCH_BLOCKING"] = "1"  # for debugging
+os.environ["CUDA_DEVICE_ORDER"]    = "PCI_BUS_ID"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2,3"                                               # GPU index
+os.environ["MKL_NUM_THREADS"]      = "7"                                                # num of threads
+os.environ["NUMEXPR_NUM_THREADS"]  = "7"                                                # num of threads
+os.environ["OMP_NUM_THREADS"]      = "7"                                                # num of threads
+
 def precheck_cfg_valid(cfg):
     if cfg.loss_fn == 'seflowLoss' and cfg.add_seloss is None:
         raise ValueError("Please specify the self-supervised loss items for seflowLoss.")
@@ -56,7 +64,9 @@ def precheck_cfg_valid(cfg):
 def main(cfg):
     precheck_cfg_valid(cfg)
     pl.seed_everything(cfg.seed, workers=True)
-
+    if cfg.use_demo_data:
+        cfg.train_data = 'data/Argoverse2_demo/preprocess_v2/sensor/train'
+        cfg.val_data = 'data/Argoverse2_demo/preprocess_v2/sensor/train'
     train_dataset = HDF5Dataset(cfg.train_data, n_frames=cfg.num_frames, dufo=(cfg.loss_fn == 'seflowLoss'))
     train_loader = DataLoader(train_dataset,
                               batch_size=cfg.batch_size,
@@ -72,7 +82,7 @@ def main(cfg):
                             pin_memory=True)
                             
     # count gpus, overwrite gpus
-    cfg.gpus = torch.cuda.device_count() if torch.cuda.is_available() else 0
+    # cfg.gpus = torch.cuda.device_count() if torch.cuda.is_available() else 0
 
     output_dir = HydraConfig.get().runtime.output_dir
     # overwrite logging folder name for SSL.

@@ -117,7 +117,6 @@ class LinearDecoder(nn.Module):
             
             flow = self.forward_single(before_pseudoimage, after_pseudoimage,
                                        point_offsets, voxel_coords)
-            print('Inside the decoder:', flow.shape)
             flow_results.append(flow)
         return flow_results
 

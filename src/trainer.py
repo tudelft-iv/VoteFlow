@@ -141,7 +141,7 @@ class ModelWrapper(LightningModule):
                 total_loss += weights[i] * res_loss[loss_name]
             for key in res_loss:
                 loss_logger[key] += res_loss[key]
-
+            print('In trainer: loss function is called!')
         self.log("trainer/loss", total_loss/batch_sizes, sync_dist=True, batch_size=self.batch_size, prog_bar=True)
         if self.add_seloss is not None:
             for key in loss_logger:

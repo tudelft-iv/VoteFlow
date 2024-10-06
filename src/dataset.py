@@ -201,7 +201,7 @@ class HDF5Dataset(Dataset):
                 # looks like v2 not follow the same rule as v1 with eval_mask provided
                 eval_mask = torch.tensor(f[key]['eval_mask'][:]) if 'eval_mask' in f[key] else torch.ones_like(pc0[:, 0], dtype=torch.bool)
                 res_dict['eval_mask'] = eval_mask
-            
+        print(f'In data loader: scene_id: {scene_id}, timestamp: {timestamp}')
         return res_dict
 
 if __name__ == "__main__":

@@ -3,7 +3,8 @@
 Incorporate the customized voting layer into ZeroFlow and use the cycle nn loss for unsupervised training.
 
 ## TODO
-+ test the sf-voxel model
+- [x] test the sf-voxel model
+- [ ] solve the training issue of deflow model
 
 ## Update Log
 + 2024.09.21 change to the codebase of [SeFlow](https://github.com/KTH-RPL/SeFlow)([README.md](./README_SeFlow.md))
@@ -43,11 +44,23 @@ python dataprocess/extract_av2.py --av2_type sensor --data_mode test --argo_dir 
 ``` python 
 python train.py model=sf_voxel_model lr=1e-3 epochs=500 batch_size=2 loss_fn=warpedLoss
 ```
+training on the complete dataset on 4 gpus
+```python
+python train.py model=sf_voxel_model lr=1e-3 epochs=20 batch_size=2 loss_fn=warpedLoss gpus=4 wandb_mode=online
+```
 
 ```python
 python train.py model=deflow lr=2e-4 epochs=20 batch_size=2 loss_fn=deflowLoss
 ```
 
 ## Inference and Visualization
-TODO
+save the inference results into the demo data path
+```python 
+python save.py checkpoint=logs/jobs/sf_voxel_model-0/09-27-09-33/checkpoints/17_sf_voxel_model.ckpt dataset_path=data/Argoverse2_demo res_name=sf_voxel_model
+```
 
+visualize with our tool
+
+```python
+python o3d_visualization.py --index 17 --res_name 'sf_voxel_model' --dataset_dir 'data/Argoverse2_demo/preprocess_v2/sensor/val' 
+```
