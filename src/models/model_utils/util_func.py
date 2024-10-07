@@ -73,18 +73,16 @@ def calculate_unq_voxels(coords, image_dims):
 
 # https://pytorch3d.readthedocs.io/en/latest/_modules/pytorch3d/ops/utils.html
 def batched_masked_gather(x: torch.Tensor, idxs: torch.Tensor, mask: torch.Tensor,fill_value=-1.0) -> torch.Tensor:
-    assert x.dim() == 3 # [b, m c]
-    assert idxs.dim() == 2 # [b, n]
+    assert x.dim() == 3 # [b, m, c]
+    assert idxs.dim() == 3 # [b, n, k]
     assert idxs.shape == mask.shape
     b, m, c = x.shape
-    n = idxs.shape[1]
 
     idxs_masked = idxs.clone()
     idxs_masked[~mask] = 0
-    l, n = idxs.shape
-    # print('batched masked gather: ', x.shape, idxs_masked.shape)
-    y = pytorch3d_ops.knn_gather(x, idxs_masked.view(b, n, 1)) # [b, n, 1, c]
-    y = y[:, :, 0, :]
+    l, n, k = idxs.shape
+    # print('batched masked gather: ', x.shape, idxs.shape, idxs_masked.shape)
+    y = pytorch3d_ops.knn_gather(x, idxs_masked) # [b, n, k, c]
     y[~mask, :] = fill_value
     # print('masked gather value selected: ', y.shape)
     return y

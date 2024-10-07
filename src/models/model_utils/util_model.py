@@ -29,19 +29,19 @@ class Backbone(nn.Module):
 
 
 class VolConv(nn.Module):
-    def __init__(self, h, w, d, c, dim_output=16):
+    def __init__(self, h, w, d, dim_output):
         super().__init__()
         assert h%2==0
         assert w%2==0
-        self.conv1 = ConvBlock(in_num_channels=c, out_num_channels=c//2)
-        self.conv2 = ConvBlock(in_num_channels=c//2, out_num_channels=c//4)
+        self.conv1 = ConvBlock(in_num_channels=1, out_num_channels=16)
+        self.conv2 = ConvBlock(in_num_channels=16, out_num_channels=16)
         self.maxpool = nn.MaxPool2d(2)
-        self.linear = nn.Linear((h//4) * (w//4) * (c//4), dim_output)
+        self.linear = nn.Linear((h//4) * (w//4) * 16, dim_output)
         self.relu = nn.ReLU()
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        b, l, c, h, w = x.shape
-        x = self.conv1(x.view(b*l, c, h, w))
+        b, l, h, w = x.shape
+        x = self.conv1(x.view(b*l, 1, h, w))
         x = self.maxpool(x)
         x = self.conv2(x)
         x = self.maxpool(x)
@@ -53,7 +53,7 @@ class Decoder(nn.Module):
     def __init__(self, dim_input=16, dim_output=3):
         super().__init__()
         # self.linear = nn.Linear(m*dim_input, dim_output)
-        layer_size=4
+        layer_size=1
         filter_size=128
         decoder = []
         decoder.append(torch.nn.Sequential(torch.nn.Linear(dim_input, filter_size)))

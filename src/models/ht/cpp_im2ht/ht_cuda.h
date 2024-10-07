@@ -4,8 +4,7 @@
 
 at::Tensor
 ht_cuda_forward(
-                const at::Tensor &feats_src,
-                const at::Tensor &feats_dst,
+                const at::Tensor &feats_src_dst,
                 const at::Tensor &voxels_src,
                 const at::Tensor &voxels_dst,
                 const at::Tensor &idxs_src,
@@ -15,7 +14,8 @@ ht_cuda_forward(
                 const int d
                 );
 
-std::vector<at::Tensor>
+// std::vector<at::Tensor>
+at::Tensor
 ht_cuda_backward(
                 const at::Tensor &grad_output, 
                 const at::Tensor &voxels_src,

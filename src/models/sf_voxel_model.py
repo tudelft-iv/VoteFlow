@@ -30,7 +30,7 @@ class SFVoxelModel(nn.Module):
                  voxel_size=(0.2, 0.2, 0.2),
                  grid_feature_size = [512, 512],
                  **kwargs):
-        super(SFVoxelModel, self).__init__()
+        super().__init__()
         
         assert len(point_cloud_range)==6
         assert len(voxel_size)==3
@@ -62,10 +62,10 @@ class SFVoxelModel(nn.Module):
         self.voxel_size = voxel_size
         self.pseudo_image_dims = pseudo_image_dims
         
-        # self.backbone = Backbone(input_channels, output_channels)
-        self.backbone = FastFlowUNet(input_channels, output_channels) ## output_channel 64
+        self.backbone = Backbone(input_channels, output_channels)
+        # self.backbone = FastFlowUNet(input_channels, output_channels) ## output_channel 64
         self.vote = HT_CUDA(self.ny, self.nx, self.nz)
-        self.volconv = VolConv(self.ny, self.nx, self.nz, c= output_channels * 2, dim_output=output_channels)
+        self.volconv = VolConv(self.ny, self.nx, self.nz, dim_output=output_channels)
         self.decoder = Decoder(dim_input= output_channels * 2 + input_channels*2 , dim_output=3)
         
         self.embedder = DynamicEmbedder(voxel_size=voxel_size,
@@ -160,15 +160,15 @@ class SFVoxelModel(nn.Module):
         # image: [b, c, h, w]; voxels: [b, num, 2]
         idxs = voxels[:, :, 0] * self.pseudo_image_dims[0] + voxels[:, :, 1]
         b, c, h, w = image.shape
-        feats_per_voxel = batched_masked_gather(image.view(b, c, h*w).permute(0, 2, 1), idxs.long(), idxs>=0, fill_value=-1)
+        feats_per_voxel = batched_masked_gather(image.view(b, c, h*w).permute(0, 2, 1), idxs[:, :, None].long(), idxs[:, :, None]>=0, fill_value=-1)
         # print('point per voxel: ', feats_per_voxel.shape)
-        return feats_per_voxel # [b, num , c]
+        return feats_per_voxel[:, :, 0, :] # [b, num , c]
 
     def extract_point_from_voxel(self, voxels, idxs):
         # voxels: [b, l, c]; idxs: [b, num]
-        feats_per_point = batched_masked_gather(voxels, idxs.long(), idxs>=0, fill_value=-1)
+        feats_per_point = batched_masked_gather(voxels, idxs[:,:,None].long(), idxs[:, :, None]>=0, fill_value=-1)
         # print('point per point: ', feats_per_point.shape)
-        return feats_per_point # [b, num, c]
+        return feats_per_point[:, :, 0, :]# [b, num, c]
 
     def extract_point_from_image(self, image, voxels, point_idxs):
         feats_per_voxel = self.extract_voxel_from_image(image, voxels)
@@ -204,16 +204,21 @@ class SFVoxelModel(nn.Module):
         self.timer[3].stop()
         
         self.timer[4].start("Voting")
-        vols= self.vote(feats_voxel_src, feats_voxel_dst, voxels_src, voxels_dst, knn_idxs_src, knn_idxs_dst) 
+        feats_voxel_dst_inflate = batched_masked_gather(feats_voxel_dst, knn_idxs_dst.long(), knn_idxs_dst>=0, fill_value=0)
+        corr_src_dst = (feats_voxel_src[:, :, None, :] * feats_voxel_dst_inflate).sum(dim=-1) # [b, l, self.n]
+        corr_inflate = batched_masked_gather(corr_src_dst, knn_idxs_src.long(), knn_idxs_src>=0, fill_value=0)
+        
+        
+        vols= self.vote(corr_inflate, voxels_src, voxels_dst, knn_idxs_src, knn_idxs_dst) 
         # print('vols:', vols.shape)  
         vols = self.volconv(vols)
         self.timer[4].stop()
         
         self.timer[5].start("Decoding")
-        feats_point_src_vol = self.extract_point_from_voxel(vols, point_voxel_idxs_src)
+        feats_point_vol = self.extract_point_from_voxel(vols, point_voxel_idxs_src)
         feats_point_src_init = self.extract_point_from_image(torch.cat([pseudoimages_src, pseudoimages_dst], dim=1), voxels_src, point_voxel_idxs_src)
         feats_point_src_grid = self.extract_point_from_image(pseudoimages_grid,  voxels_src, point_voxel_idxs_src)
-        feats_cat = self.concat_feats(feats_point_src_vol, feats_point_src_init, feats_point_src_grid)
+        feats_cat = self.concat_feats(feats_point_vol, feats_point_src_init, feats_point_src_grid)
         # print('feats_points_src_vol:', feats_point_src_vol.shape)
         # print('pseudoimages_src:', pseudoimages_src.shape)
         # print('pseudoimages_dst:', pseudoimages_dst.shape)

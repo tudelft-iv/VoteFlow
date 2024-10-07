@@ -4,8 +4,7 @@
 at::Tensor
 // std::vector<at::Tensor>
 im2ht_forward(
-            const at::Tensor &feats_src,
-            const at::Tensor &feats_dst,
+            const at::Tensor &feats,
             const at::Tensor &voxels_src,
             const at::Tensor &voxels_dst,
             const at::Tensor &idxs_src,
@@ -16,12 +15,12 @@ im2ht_forward(
             )
 {
     if (
-        feats_src.type().is_cuda() && feats_dst.type().is_cuda() && \
+        feats.type().is_cuda() && \
         voxels_src.type().is_cuda() && voxels_dst.type().is_cuda() && \
         idxs_src.type().is_cuda() && idxs_dst.type().is_cuda()
         )
     {
-        return ht_cuda_forward(feats_src, feats_dst,
+        return ht_cuda_forward(feats,
                                 voxels_src, voxels_dst, 
                                 idxs_src, idxs_dst, 
                                 h, w, d
@@ -31,8 +30,8 @@ im2ht_forward(
 }
 
 
-// at::Tensor
-std::vector<at::Tensor>
+at::Tensor
+// std::vector<at::Tensor>
 im2ht_backward(const at::Tensor &grad_vol,
                 const at::Tensor &voxels_src,
                 const at::Tensor &voxels_dst,

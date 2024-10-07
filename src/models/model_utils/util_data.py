@@ -3,6 +3,7 @@ import glob
 import argparse
 import numpy as np
 import torch
+from .util_visualization import visualize_pcd
 
 def collate(batch, fixed_length=80000):
     # print('batch #############: ', len(batch))

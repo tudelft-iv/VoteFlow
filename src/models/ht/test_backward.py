@@ -12,8 +12,6 @@ import glob
 from models.ht.ht_cuda import HT_CUDA
 from models.ht.im2ht import IM2HTFunction
 
-from main import dataloader_minimal
-
 random.seed(0)
 np.random.seed(0)
 torch.manual_seed(0)
@@ -57,20 +55,19 @@ vote = vote.double().to(device)
 
 print('grad check***********')    
 
-feats_src = torch.rand(size=(b, l, c), requires_grad=True).double().to(device)
-feats_dst = torch.rand(size=(b, l, c), requires_grad=True).double().to(device)
+feats = torch.rand(size=(b, l, m, n), requires_grad=True).double().to(device)
 voxels_src = torch.randint(size=(b, l, 2), low=0, high=nx).double().to(device)
 voxels_dst = torch.randint(size=(b, l, 2), low=0, high=nx).double().to(device)
 idxs_src = torch.randint(0, l, size=(b, l, m)).double().to(device)
 idxs_dst = torch.randint(0, l, size=(b, l, n)).double().to(device)
-print('input shapes: ', feats_src.shape, feats_dst.shape, voxels_src.shape, voxels_dst.shape, idxs_src.shape, idxs_dst.shape)
+print('input shapes: ', feats.shape, voxels_src.shape, voxels_dst.shape, idxs_src.shape, idxs_dst.shape)
 # grad_output = torch.randn(vol.shape).double().to(device)
 # vol.backward(gradient=grad_output)
 # grad_input = fs_window.grad
 # print(grad_input.shape)
 
 # only able to test inputs with tiny sizes
-res = gradcheck(vote, (feats_src, feats_dst, voxels_src, voxels_dst, idxs_src, idxs_dst), raise_exception=True)
+res = gradcheck(vote, (feats, voxels_src, voxels_dst, idxs_src, idxs_dst), raise_exception=True)
 # res = gradcheck(IM2HTFunction.apply, (feats, bins_x, bins_y, bins_z, flags, idxs, m, n, h, w, d), raise_exception=True)
 # # res=gradcheck(myconv, input, eps=1e-3, atol=1e-3, rtol=1e-2, raise_exception=True)
 print('grad check', res)
