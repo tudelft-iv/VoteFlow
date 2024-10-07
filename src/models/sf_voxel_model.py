@@ -62,8 +62,8 @@ class SFVoxelModel(nn.Module):
         self.voxel_size = voxel_size
         self.pseudo_image_dims = pseudo_image_dims
         
-        self.backbone = Backbone(input_channels, output_channels)
-        # self.backbone = FastFlowUNet(input_channels, output_channels) ## output_channel 64
+        #self.backbone = Backbone(input_channels, output_channels)
+        self.backbone = FastFlowUNet(input_channels, output_channels) ## output_channel 64
         self.vote = HT_CUDA(self.ny, self.nx, self.nz)
         self.volconv = VolConv(self.ny, self.nx, self.nz, dim_output=output_channels)
         self.decoder = Decoder(dim_input= output_channels * 2 + input_channels*2 , dim_output=3)
@@ -184,37 +184,38 @@ class SFVoxelModel(nn.Module):
     def _model_forward(self, points_src, points_dst):
         # assert points_src.shape==points_dst.shape
 
-        self.timer[1].start("Voxelization")
+        self.timer[1][0].start("Voxelization")
         pseudoimages_src, voxel_infos_lst_src = self.embedder(points_src)
         pseudoimages_dst, voxel_infos_lst_dst = self.embedder(points_dst)
-        self.timer[1].stop()
+        self.timer[1][0].stop()
         
-        self.timer[2].start("Preprocessing")
+        self.timer[1][1].start("Preprocessing")
         with torch.no_grad():
             point_masks_src, point_masks_dst, \
                 point_voxel_idxs_src, point_voxel_idxs_dst, \
                     voxels_src, voxels_dst, \
                         knn_idxs_src, knn_idxs_dst = self.preprocessing(points_src, points_dst, voxel_infos_lst_src, voxel_infos_lst_dst)
-        self.timer[2].stop()
+        self.timer[1][1].stop()
         
-        self.timer[3].start("Feature extraction")
+        self.timer[1][2].start("Feature extraction")
         pseudoimages_grid = self.backbone(pseudoimages_src, pseudoimages_dst)
         feats_voxel_src = self.extract_voxel_from_image(pseudoimages_grid, voxels_src)
         feats_voxel_dst = self.extract_voxel_from_image(pseudoimages_grid, voxels_dst)
-        self.timer[3].stop()
+        self.timer[1][2].stop()
         
-        self.timer[4].start("Voting")
+        self.timer[1][3].start("Gathering")
         feats_voxel_dst_inflate = batched_masked_gather(feats_voxel_dst, knn_idxs_dst.long(), knn_idxs_dst>=0, fill_value=0)
         corr_src_dst = (feats_voxel_src[:, :, None, :] * feats_voxel_dst_inflate).sum(dim=-1) # [b, l, self.n]
         corr_inflate = batched_masked_gather(corr_src_dst, knn_idxs_src.long(), knn_idxs_src>=0, fill_value=0)
+        self.timer[1][3].stop()
         
-        
+        self.timer[1][4].start("Voting")
         vols= self.vote(corr_inflate, voxels_src, voxels_dst, knn_idxs_src, knn_idxs_dst) 
         # print('vols:', vols.shape)  
         vols = self.volconv(vols)
-        self.timer[4].stop()
+        self.timer[1][4].stop()
         
-        self.timer[5].start("Decoding")
+        self.timer[1][5].start("Decoding")
         feats_point_vol = self.extract_point_from_voxel(vols, point_voxel_idxs_src)
         feats_point_src_init = self.extract_point_from_image(torch.cat([pseudoimages_src, pseudoimages_dst], dim=1), voxels_src, point_voxel_idxs_src)
         feats_point_src_grid = self.extract_point_from_image(pseudoimages_grid,  voxels_src, point_voxel_idxs_src)
@@ -227,7 +228,7 @@ class SFVoxelModel(nn.Module):
         
         # print('feats_cat:', feats_cat.shape)
         flows = self.decoder(feats_cat)
-        self.timer[5].stop()
+        self.timer[1][5].stop()
         
         pc0_points_lst = [e["points"] for e in voxel_infos_lst_src]
         pc1_points_lst = [e["points"] for e in voxel_infos_lst_dst]
@@ -288,8 +289,9 @@ class SFVoxelModel(nn.Module):
         pc1s = batch["pc1"]
         self.timer[0].stop()
         
-        
+        self.timer[1].start("Model Forward")
         model_res = self._model_forward(pc0s, pc1s)
+        self.timer[1].stop()
         
         ret_dict = model_res
         ret_dict["pose_flow"] = pose_flows

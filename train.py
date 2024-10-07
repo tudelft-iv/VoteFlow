@@ -28,14 +28,14 @@ from pathlib import Path
 from src.dataset import HDF5Dataset, collate_fn_pad
 from src.trainer import ModelWrapper
 
-os.environ["PYTORCH_USE_CUDA_DSA"] = "1"
-os.environ["HYDRA_FULL_ERROR"] = "1"  # for debugging
-os.environ["CUDA_LAUNCH_BLOCKING"] = "1"  # for debugging
+# os.environ["PYTORCH_USE_CUDA_DSA"] = "1"
+# os.environ["HYDRA_FULL_ERROR"] = "1"  # for debugging
+# os.environ["CUDA_LAUNCH_BLOCKING"] = "1"  # for debugging
 os.environ["CUDA_DEVICE_ORDER"]    = "PCI_BUS_ID"
 os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2,3"                                               # GPU index
-os.environ["MKL_NUM_THREADS"]      = "7"                                                # num of threads
-os.environ["NUMEXPR_NUM_THREADS"]  = "7"                                                # num of threads
-os.environ["OMP_NUM_THREADS"]      = "7"                                                # num of threads
+os.environ["MKL_NUM_THREADS"]      = "8"                                                # num of threads
+os.environ["NUMEXPR_NUM_THREADS"]  = "8"                                                # num of threads
+os.environ["OMP_NUM_THREADS"]      = "8"                                                # num of threads
 
 def precheck_cfg_valid(cfg):
     if cfg.loss_fn == 'seflowLoss' and cfg.add_seloss is None:
@@ -153,5 +153,4 @@ def main(cfg):
     wandb.finish()
 
 if __name__ == "__main__":
-    torch.backends.cudnn.enabled = False
     main()
