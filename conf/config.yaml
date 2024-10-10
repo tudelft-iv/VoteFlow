@@ -13,7 +13,7 @@ wandb_run_name: ${exp_id}
 
 use_demo_data: False
 train_data: data/Argoverse2/preprocess_v2/sensor/train
-val_data: data/Argoverse2/preprocess_v2/sensor/train
+val_data: data/Argoverse2/preprocess_v2/sensor/val
 
 output: ${model.name}-${slurm_id}
 
