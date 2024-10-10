@@ -40,16 +40,23 @@ class FastFlow3D(nn.Module):
         return self.load_state_dict(state_dict=state_dict, strict=False)
     
     def _model_forward(self, pc0s, pc1s):
-
+        
+        self.timer[1][0].start("Voxelization")
         pc0_before_pseudoimages, pc0_voxel_infos_lst = self.embedder(pc0s)
         pc1_before_pseudoimages, pc1_voxel_infos_lst = self.embedder(pc1s)
-
+        self.timer[1][0].stop()
+        
+        self.timer[1][1].start("Backbone")
         grid_flow_pseudoimage = self.backbone(pc0_before_pseudoimages,
                                             pc1_before_pseudoimages)
+        self.timer[1][1].stop()
+        
+        self.timer[1][2].start("Decoder")
         flows = self.head(
             torch.cat((pc0_before_pseudoimages, pc1_before_pseudoimages),
                     dim=1), grid_flow_pseudoimage, pc0_voxel_infos_lst)
-
+        self.timer[1][2].stop()
+        
         pc0_points_lst = [e["points"] for e in pc0_voxel_infos_lst]
         pc0_valid_point_idxes = [e["point_idxes"] for e in pc0_voxel_infos_lst]
         pc1_points_lst = [e["points"] for e in pc1_voxel_infos_lst]
@@ -96,8 +103,10 @@ class FastFlow3D(nn.Module):
         pc1s = batch["pc1"]
         self.timer[0].stop()
 
+        self.timer[1].start("Model Forward")
         model_res = self._model_forward(pc0s, pc1s)
-
+        self.timer[1].stop()
+        
         ret_dict = model_res
         ret_dict["pose_flow"] = pose_flows
         if compute_cycle:
