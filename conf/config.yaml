@@ -37,7 +37,7 @@ add_seloss: # {chamfer_dis: 1.0, static_flow_loss: 1.0, dynamic_chamfer_dis: 1.0
 # log settings
 seed: 42069
 log_every: 10 # steps epochs*dataset_size/batch_size
-val_every: 3 # epochs
+val_every: 4 # epochs
 save_top_model: 5 # top_k model will be saved.
 
 # -----> Model and Task Parameters

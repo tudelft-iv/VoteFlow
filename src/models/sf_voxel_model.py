@@ -220,9 +220,7 @@ class SFVoxelModel(nn.Module):
         feats_point_src_init = self.extract_point_from_image(torch.cat([pseudoimages_src, pseudoimages_dst], dim=1), voxels_src, point_voxel_idxs_src)
         feats_point_src_grid = self.extract_point_from_image(pseudoimages_grid,  voxels_src, point_voxel_idxs_src)
         feats_cat = self.concat_feats(feats_point_vol, feats_point_src_init, feats_point_src_grid)
-        # print('feats_points_src_vol:', feats_point_src_vol.shape)
-        # print('pseudoimages_src:', pseudoimages_src.shape)
-        # print('pseudoimages_dst:', pseudoimages_dst.shape)
+        # print('feats_points_vol:', feats_point_vol.shape)
         # print('feats_points_src_init:', feats_point_src_init.shape)
         # print('feats_points_src_grid:', feats_point_src_grid.shape)
         

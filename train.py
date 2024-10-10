@@ -20,7 +20,7 @@ from lightning.pytorch.callbacks import (
     ModelCheckpoint
 )
 
-from omegaconf import DictConfig, OmegaConf
+from omegaconf import DictConfig, OmegaConf, ListConfig
 import hydra, wandb, os, math
 from hydra.core.hydra_config import HydraConfig
 from pathlib import Path
@@ -31,11 +31,6 @@ from src.trainer import ModelWrapper
 # os.environ["PYTORCH_USE_CUDA_DSA"] = "1"
 # os.environ["HYDRA_FULL_ERROR"] = "1"  # for debugging
 # os.environ["CUDA_LAUNCH_BLOCKING"] = "1"  # for debugging
-os.environ["CUDA_DEVICE_ORDER"]    = "PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2,3"                                               # GPU index
-os.environ["MKL_NUM_THREADS"]      = "8"                                                # num of threads
-os.environ["NUMEXPR_NUM_THREADS"]  = "8"                                                # num of threads
-os.environ["OMP_NUM_THREADS"]      = "8"                                                # num of threads
 
 def precheck_cfg_valid(cfg):
     if cfg.loss_fn == 'seflowLoss' and cfg.add_seloss is None:
@@ -125,14 +120,20 @@ def main(cfg):
         # check local tensorboard logging: tensorboard --logdir logs/jobs/{log folder}
         logger = TensorBoardLogger(save_dir=output_dir, name="logs")
 
-
+    if isinstance(cfg.gpus, ListConfig):
+        num_gpus = len(cfg.gpus)
+    elif isinstance(cfg.gpus,int):
+        num_gpus = cfg.gpus
+    else:
+        raise ValueError("cfg.gpus should be a list or int.")
+            
     trainer = pl.Trainer(logger=logger,
                          log_every_n_steps=50,
                          accelerator="gpu",
                          devices=cfg.gpus,
                          check_val_every_n_epoch=cfg.val_every,
                          gradient_clip_val=cfg.gradient_clip_val,
-                         strategy="ddp_find_unused_parameters_false" if cfg.gpus > 1 else "auto",
+                         strategy="ddp_find_unused_parameters_false" if num_gpus > 1 else "auto",
                          callbacks=callbacks,
                          max_epochs=cfg.epochs,
                          sync_batchnorm=cfg.sync_bn)
