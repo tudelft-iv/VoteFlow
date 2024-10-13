@@ -40,26 +40,31 @@ def main(cfg):
         
     torch_load_ckpt = torch.load(cfg.checkpoint)
     checkpoint_params = DictConfig(torch_load_ckpt["hyper_parameters"])
-    cfg.output = checkpoint_params.cfg.output + f"-e{torch_load_ckpt['epoch']}-{cfg.av2_mode}-v{cfg.leaderboard_version}"
+    
+    print(checkpoint_params.keys())
+    print(checkpoint_params.cfg.exp_id)
+    
+    cfg.output = checkpoint_params.cfg.exp_id + f"-e{torch_load_ckpt['epoch']}-{cfg.av2_mode}-v{cfg.leaderboard_version}"
     cfg.model.update(checkpoint_params.cfg.model)
     
     mymodel = ModelWrapper.load_from_checkpoint(cfg.checkpoint, cfg=cfg, eval=True)
     print(f"\n---LOG[eval]: Loaded model from {cfg.checkpoint}. The backbone network is {checkpoint_params.cfg.model.name}.\n")
 
     wandb_logger = WandbLogger(save_dir=output_dir,
-                               entity="kth-rpl",
-                               project=f"deflow-eval", 
+                               project=f"{cfg.wandb_project_name}", 
                                name=f"{cfg.output}",
                                offline=(cfg.wandb_mode == "offline"))
     
     trainer = pl.Trainer(logger=wandb_logger, devices=1)
     # NOTE(Qingwen): search & check: def eval_only_step_(self, batch, res_dict)
-    trainer.validate(model = mymodel, \
-                     dataloaders = DataLoader( \
-                                            HDF5Dataset(cfg.dataset_path + f"/{cfg.av2_mode}", \
-                                                        n_frames=checkpoint_params.cfg.num_frames  if 'num_frames' in checkpoint_params.cfg else 2, \
-                                                        eval=True, leaderboard_version=cfg.leaderboard_version), \
-                                            batch_size=1, shuffle=False))
+    print(cfg.dataset_path)
+    trainer.validate(model = mymodel, 
+                     dataloaders = DataLoader(
+                         HDF5Dataset(cfg.dataset_path + f"/{cfg.av2_mode}", 
+                                     n_frames=checkpoint_params.cfg.num_frames  if 'num_frames' in checkpoint_params.cfg else 2, \
+                                     eval=True, leaderboard_version=cfg.leaderboard_version),
+                                     batch_size=1, 
+                                     shuffle=False))
     wandb.finish()
 
 if __name__ == "__main__":

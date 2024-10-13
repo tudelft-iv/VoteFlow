@@ -1,6 +1,6 @@
 
-dataset_path: /home/shimingwang/workspace/sf_tv/sceneflow_tv_se/data/argoverse2_demo/sensor
-checkpoint: /home/shimingwang/workspace/sf_tv/sceneflow_tv_se/checkpoints/seflow_best.ckpt
+dataset_path: data/Argoverse2/preprocess_v2/sensor
+checkpoint: checkpoints/seflow_best.ckpt
 av2_mode: val # [val, test]
 save_res: False # [True, False]
 
@@ -14,6 +14,7 @@ gpus: 1
 seed: 42069
 eval_only: True
 wandb_mode: offline # [offline, disabled, online]
+wandb_project_name: sceneflow_translation_voting
 defaults:
   - hydra: default
   - model: deflow

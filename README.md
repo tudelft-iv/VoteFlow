@@ -52,7 +52,11 @@ python train.py model=sf_voxel_model lr=1e-3 epochs=20 batch_size=2 loss_fn=warp
 ```python
 python train.py model=deflow lr=2e-4 epochs=20 batch_size=2 loss_fn=deflowLoss
 ```
+## Evaluation 
 
+```python
+python eval.py checkpoint=logs/jobs/sf_voxel_model-0/09-27-09-33/checkpoints/17_sf_voxel_model.ckpt av2_mode=val
+```
 ## Inference and Visualization
 save the inference results into the demo data path
 ```python 

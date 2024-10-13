@@ -71,12 +71,13 @@ def main(cfg):
                               collate_fn=collate_fn_pad,
                               pin_memory=True)
     val_loader = DataLoader(HDF5Dataset(cfg.val_data, n_frames=cfg.num_frames),
-                            batch_size=cfg.batch_size,
+                            batch_size=1,
                             shuffle=False,
                             num_workers=cfg.num_workers,
                             collate_fn=collate_fn_pad,
                             pin_memory=True)
-                            
+    print(f"Train Dataset Size: {len(train_dataset)}")
+    print(f"Validation Dataset Size: {len(val_loader.dataset)}")
     # count gpus, overwrite gpus
     # cfg.gpus = torch.cuda.device_count() if torch.cuda.is_available() else 0
 

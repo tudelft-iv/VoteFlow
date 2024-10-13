@@ -74,7 +74,7 @@ class SFVoxelModel(nn.Module):
                                 feat_channels=input_channels)
         
         self.timer = dztimer.Timing()
-        
+        self.timer.start("Total")
 
     def process_points_per_pair(self, voxel_info_src, voxel_info_dst):
         valid_point_idxs_src = voxel_info_src['point_idxes']
