@@ -52,9 +52,13 @@ class FastFlow3D(nn.Module):
         self.timer[1][1].stop()
         
         self.timer[1][2].start("Decoder")
+        # print('pc0_before_pseudoimages: ', pc0_before_pseudoimages.shape)
+        # print('pc1_before_pseudoimages: ', pc1_before_pseudoimages.shape)
+        # print('grid_flow_pseudoimage: ', grid_flow_pseudoimage.shape)
         flows = self.head(
-            torch.cat((pc0_before_pseudoimages, pc1_before_pseudoimages),
-                    dim=1), grid_flow_pseudoimage, pc0_voxel_infos_lst)
+            torch.cat((pc0_before_pseudoimages, pc1_before_pseudoimages), dim=1), 
+            grid_flow_pseudoimage, 
+            pc0_voxel_infos_lst)
         self.timer[1][2].stop()
         
         pc0_points_lst = [e["points"] for e in pc0_voxel_infos_lst]

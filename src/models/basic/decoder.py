@@ -80,7 +80,8 @@ class LinearDecoder(nn.Module):
             nn.Linear(pseudoimage_channels*4, 32), nn.GELU(),
             nn.Linear(32, 3))
 
-    def forward_single(self, before_pseudoimage: torch.Tensor,
+    def forward_single(self, 
+                       before_pseudoimage: torch.Tensor,
                        after_pseudoimage: torch.Tensor,
                        point_offsets: torch.Tensor,
                        voxel_coords: torch.Tensor) -> torch.Tensor:
@@ -94,10 +95,15 @@ class LinearDecoder(nn.Module):
         before_voxel_vectors = before_pseudoimage[:, voxel_coords[:, 1],
                                                   voxel_coords[:, 2]].T
         
+        # print('before_pseudoimage:', before_pseudoimage.shape)
+        # print('after_pseudoimage:', after_pseudoimage.shape)
+        # print('point_offsets: ', point_offsets.shape)
+        # print('voxel_coords: ', voxel_coords.shape)
         # [N, 64] [N, 64] -> [N, 128]
         concatenated_vectors = torch.cat([before_voxel_vectors, after_voxel_vectors], dim=1)
         
         # [N, 3] -> [N, 128]
+
         point_offsets_feature = self.offset_encoder(point_offsets)
 
         flow = self.decoder(torch.cat([concatenated_vectors, point_offsets_feature], dim=1))

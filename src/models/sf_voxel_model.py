@@ -95,6 +95,8 @@ class SFVoxelModel(nn.Module):
         point_masks_dst = []
         point_voxel_idxs_src = []
         point_voxel_idxs_dst = []
+        point_offsets_src = []
+        
         unq_voxels_src = []
         unq_voxels_dst = []
         knn_idxs_src = []
@@ -119,6 +121,7 @@ class SFVoxelModel(nn.Module):
 
             point_voxel_idxs_src.append(point_voxel_idxs_src_)
             point_voxel_idxs_dst.append(point_voxel_idxs_dst_)
+            point_offsets_src.append(voxel_info_src['point_offsets'])
             unq_voxels_src.append(unq_voxels_src_)
             unq_voxels_dst.append(unq_voxels_dst_)
             knn_idxs_src.append(knn_idxs_src_)
@@ -129,14 +132,16 @@ class SFVoxelModel(nn.Module):
         # print('l', l_points, l_voxels)
 
         # padding
-        for i, (point_voxel_idxs_src_, point_voxel_idxs_dst_, unq_voxels_src_, unq_voxels_dst_, knn_idxs_src_, knn_idxs_dst_) \
-            in enumerate( zip(point_voxel_idxs_src, point_voxel_idxs_dst, unq_voxels_src, unq_voxels_dst, knn_idxs_src, knn_idxs_dst) ):
+        for i, (point_voxel_idxs_src_, point_voxel_idxs_dst_, point_offsets_src_, unq_voxels_src_, unq_voxels_dst_, knn_idxs_src_, knn_idxs_dst_) \
+            in enumerate( zip(point_voxel_idxs_src, point_voxel_idxs_dst, point_offsets_src, unq_voxels_src, unq_voxels_dst, knn_idxs_src, knn_idxs_dst) ):
             unq_voxels_src_= pad_to_batch(unq_voxels_src_, l_voxels)
             unq_voxels_dst_ = pad_to_batch(unq_voxels_dst_, l_voxels)
             knn_idxs_src_ = pad_to_batch(knn_idxs_src_, l_voxels)
             knn_idxs_dst_= pad_to_batch(knn_idxs_dst_, l_voxels)
             point_voxel_idxs_src_= pad_to_batch(point_voxel_idxs_src_, l_points)
             point_voxel_idxs_dst_= pad_to_batch(point_voxel_idxs_dst_, l_points)
+            
+            point_offsets_src_ = pad_to_batch(point_offsets_src_, l_points)
 
             unq_voxels_src[i] = unq_voxels_src_
             unq_voxels_dst[i] = unq_voxels_dst_
@@ -144,17 +149,19 @@ class SFVoxelModel(nn.Module):
             knn_idxs_dst[i] = knn_idxs_dst_
             point_voxel_idxs_src[i] = point_voxel_idxs_src_
             point_voxel_idxs_dst[i] = point_voxel_idxs_dst_
-
+            point_offsets_src[i] = point_offsets_src_
+            
         unq_voxels_src = torch.stack(unq_voxels_src, dim=0)
         unq_voxels_dst = torch.stack(unq_voxels_dst, dim=0)
         knn_idxs_src = torch.stack(knn_idxs_src, dim=0)
         knn_idxs_dst = torch.stack(knn_idxs_dst, dim=0)
         point_voxel_idxs_src = torch.stack(point_voxel_idxs_src, dim=0)
         point_voxel_idxs_dst = torch.stack(point_voxel_idxs_dst, dim=0)
+        point_offsets_src = torch.stack(point_offsets_src, dim=0)
         point_masks_src = torch.stack(point_masks_src, dim=0)
         point_masks_dst = torch.stack(point_masks_dst, dim=0)
 
-        return point_masks_src, point_masks_dst, point_voxel_idxs_src, point_voxel_idxs_dst, unq_voxels_src, unq_voxels_dst, knn_idxs_src, knn_idxs_dst
+        return point_masks_src, point_masks_dst, point_voxel_idxs_src, point_voxel_idxs_dst, point_offsets_src, unq_voxels_src, unq_voxels_dst, knn_idxs_src, knn_idxs_dst
     
     def extract_voxel_from_image(self, image, voxels):
         # image: [b, c, h, w]; voxels: [b, num, 2]
@@ -193,6 +200,7 @@ class SFVoxelModel(nn.Module):
         with torch.no_grad():
             point_masks_src, point_masks_dst, \
                 point_voxel_idxs_src, point_voxel_idxs_dst, \
+                    point_offsets_src, \
                     voxels_src, voxels_dst, \
                         knn_idxs_src, knn_idxs_dst = self.preprocessing(points_src, points_dst, voxel_infos_lst_src, voxel_infos_lst_dst)
         self.timer[1][1].stop()
@@ -206,6 +214,7 @@ class SFVoxelModel(nn.Module):
         self.timer[1][3].start("Gathering")
         feats_voxel_dst_inflate = batched_masked_gather(feats_voxel_dst, knn_idxs_dst.long(), knn_idxs_dst>=0, fill_value=0)
         corr_src_dst = (feats_voxel_src[:, :, None, :] * feats_voxel_dst_inflate).sum(dim=-1) # [b, l, self.n]
+        # print('corr_src_dst:', corr_src_dst.shape)
         corr_inflate = batched_masked_gather(corr_src_dst, knn_idxs_src.long(), knn_idxs_src>=0, fill_value=0)
         self.timer[1][3].stop()
         
@@ -220,12 +229,22 @@ class SFVoxelModel(nn.Module):
         feats_point_src_init = self.extract_point_from_image(torch.cat([pseudoimages_src, pseudoimages_dst], dim=1), voxels_src, point_voxel_idxs_src)
         feats_point_src_grid = self.extract_point_from_image(pseudoimages_grid,  voxels_src, point_voxel_idxs_src)
         feats_cat = self.concat_feats(feats_point_vol, feats_point_src_init, feats_point_src_grid)
+        # print('pseudoimages_src:', pseudoimages_src.shape)
+        # print('pseudoimages_dst:', pseudoimages_dst.shape)
+        # print('voxels_src:', voxels_src.shape)  
+        # print('point_voxel_idxs_src:', point_voxel_idxs_src.shape)
+        # print('point_voxel_idxs_src:', point_voxel_idxs_src.max(), point_voxel_idxs_src.min())
         # print('feats_points_vol:', feats_point_vol.shape)
         # print('feats_points_src_init:', feats_point_src_init.shape)
         # print('feats_points_src_grid:', feats_point_src_grid.shape)
         
         # print('feats_cat:', feats_cat.shape)
-        flows = self.decoder(feats_cat)
+        # print('pts offsets:', len(voxel_infos_lst_src))
+        # for voxel_info in voxel_infos_lst_src:
+        #     print('voxel_info:', voxel_info['point_offsets'].shape)
+        # print('point_offsets_src:', point_offsets_src.shape)
+        
+        flows = self.decoder(feats_cat, point_offsets_src)
         self.timer[1][5].stop()
         
         pc0_points_lst = [e["points"] for e in voxel_infos_lst_src]

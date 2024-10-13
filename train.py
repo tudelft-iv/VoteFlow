@@ -76,6 +76,7 @@ def main(cfg):
                             num_workers=cfg.num_workers,
                             collate_fn=collate_fn_pad,
                             pin_memory=True)
+    
     print(f"Train Dataset Size: {len(train_dataset)}")
     print(f"Validation Dataset Size: {len(val_loader.dataset)}")
     # count gpus, overwrite gpus

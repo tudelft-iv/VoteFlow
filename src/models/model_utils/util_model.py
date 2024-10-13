@@ -50,24 +50,30 @@ class VolConv(nn.Module):
         return x.view(b, l, -1)
 
 class Decoder(nn.Module):
-    def __init__(self, dim_input=16, dim_output=3):
+    def __init__(self, dim_input=16, dim_output=3, layer_size=1):
         super().__init__()
         # self.linear = nn.Linear(m*dim_input, dim_output)
-        layer_size=1
+        self.offset_encoder = nn.Linear(3, dim_input)
+        
         filter_size=128
-        decoder = []
-        decoder.append(torch.nn.Sequential(torch.nn.Linear(dim_input, filter_size)))
+        decoder = nn.ModuleList()
+        decoder.append(torch.nn.Linear(dim_input * 2, filter_size))
         decoder.append(torch.nn.GELU())
         for _ in range(layer_size-1):
-            decoder.append(torch.nn.Sequential(torch.nn.Linear(filter_size, filter_size)))
+            decoder.append(torch.nn.Linear(filter_size, filter_size))
             decoder.append(torch.nn.ReLU())
         decoder.append(torch.nn.Linear(filter_size, dim_output))
-        self.decoder = nn.ModuleList(decoder)
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        
+        
+        self.decoder = nn.Sequential(*decoder)
+        
+    def forward(self, x: torch.Tensor, pts_offsets: torch.Tensor) -> torch.Tensor:
         b, l, _ = x.shape
-        for layer in self.decoder:
-            x = layer(x)
+        pts_offsets_feats = self.offset_encoder(pts_offsets)
+        x = torch.cat([x, pts_offsets_feats], dim=-1)
         # print('decoder conv: ', x.shape)
+        x = self.decoder(x)
+        
         return x
 
 class ConvWithNorms(nn.Module):
