@@ -184,7 +184,7 @@ def warpedLoss(res_dict, dist_threshold=3.33):
         return loss
     
     
-        # Compute min distance between warped point cloud and point cloud at t+1.
+    # Compute min distance between warped point cloud and point cloud at t+1.
     warped_to_target_knn = knn_points(p1=warped_pc, p2=target_pc, K=1)
     warped_to_target_distances = warped_to_target_knn.dists[0]
     target_to_warped_knn = knn_points(p1=target_pc, p2=warped_pc, K=1)

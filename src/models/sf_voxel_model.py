@@ -196,6 +196,11 @@ class SFVoxelModel(nn.Module):
         pseudoimages_dst, voxel_infos_lst_dst = self.embedder(points_dst)
         self.timer[1][0].stop()
         
+        # print('points_src:', points_src.shape)
+        # print('points_dst:', points_dst.shape)  
+        # print('pseudoimages_src:', pseudoimages_src.shape)
+        # print('pseudoimages_dst:', pseudoimages_dst.shape)
+        
         self.timer[1][1].start("Preprocessing")
         with torch.no_grad():
             point_masks_src, point_masks_dst, \

@@ -62,7 +62,9 @@ def main(cfg):
     pl.seed_everything(cfg.seed, workers=True)
     if cfg.use_demo_data:
         cfg.train_data = 'data/Argoverse2_demo/preprocess_v2/sensor/train'
-        cfg.val_data = 'data/Argoverse2_demo/preprocess_v2/sensor/train'
+        cfg.val_data = 'data/Argoverse2_demo/preprocess_v2/sensor/val'
+    print('Train dataset path', cfg.train)
+    print('Val dataset path', cfg.val)
     train_dataset = HDF5Dataset(cfg.train_data, n_frames=cfg.num_frames, dufo=(cfg.loss_fn == 'seflowLoss'))
     train_loader = DataLoader(train_dataset,
                               batch_size=cfg.batch_size,
