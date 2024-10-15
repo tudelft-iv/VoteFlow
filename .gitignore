@@ -3,6 +3,7 @@ checkpoints/
 __pycache__/
 wandb/
 outputs/
+remote_outputs/
 
 *.json
 logs/*

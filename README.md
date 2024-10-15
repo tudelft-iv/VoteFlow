@@ -60,11 +60,11 @@ python eval.py checkpoint=logs/jobs/sf_voxel_model-0/09-27-09-33/checkpoints/17_
 ## Inference and Visualization
 save the inference results into the demo data path
 ```python 
-python save.py checkpoint=logs/jobs/sf_voxel_model-0/09-27-09-33/checkpoints/17_sf_voxel_model.ckpt dataset_path=data/Argoverse2_demo res_name=sf_voxel_model
+python save.py checkpoint=logs/jobs/sf_voxel_model-0/09-27-09-33/checkpoints/17_sf_voxel_model.ckpt dataset_path=data/Argoverse2_demo/preprocess_v2/sensor/val_vis res_name=sf_voxel_model
 ```
 
 visualize with our tool
 
 ```python
-python o3d_visualization.py --index 17 --res_name 'sf_voxel_model' --dataset_dir 'data/Argoverse2_demo/preprocess_v2/sensor/val' 
+python o3d_visualization.py index=17 res_name=sf_voxel_model  
 ```

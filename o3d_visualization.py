@@ -1,5 +1,6 @@
 
 import numpy as np
+import hydra
 import fire, time
 import pickle 
 import h5py
@@ -15,24 +16,31 @@ def visualize_pcd_list(pc_dict_list):
     color_list = []
     name_list = []
     pc_list = []
+    title = 'visualize input'
+    base_color_list = ['r', 'g', 'b']
     for idx, dic in enumerate(pc_dict_list):
         pc_list.append(dic['pc'])
         color_list.append(np.zeros(len(dic['pc'])) + idx)
         name_list.append(dic['name'])
+        title += f'{dic["name"]}-{base_color_list[idx]}, '
     visualize_pcd(
         np.concatenate(pc_list, axis=0),
         np.concatenate(color_list, axis=0),
-    num_colors=3, 
-    title=f'visualize input: {name_list[0]}-r, {name_list[1]}-g')
+        num_colors=3, 
+        title=title)
 
 
-def vis(index,
-        load_dict: bool = False,
-        save_reformulated_vis: bool = False,
-        save_dir = 'outputs/reformulated_vis_outputs',
-        vis_name: str = 'seflow_best',
-        data_dir: str ="data/argoverse2_demo/sensor/val"):
-    data_index = pickle.load(open(os.path.join(data_dir, 'index_total.pkl'), 'rb'))
+@hydra.main(version_base=None, config_path="conf", config_name="vis")
+def vis(cfg):
+    
+    print(cfg)
+    index = cfg.index
+    vis_name = cfg.vis_name
+    load_dict = cfg.load_dict
+    save_reformulated_vis = cfg.save_reformulated_vis
+    save_dir = cfg.save_dir
+    
+    data_index = pickle.load(open(os.path.join(cfg.dataset_path, 'index_total.pkl'), 'rb'))
     scene_id, timestamp = data_index[index]
     
     key = str(timestamp)
@@ -48,7 +56,7 @@ def vis(index,
         data_dict = pickle.load(open(pkl_file_path, 'rb'))
     else:
         print(f"Load from hdf5:")
-        with h5py.File(os.path.join(data_dir, f'{scene_id}.h5'), 'r') as f:
+        with h5py.File(os.path.join(cfg.dataset_path, f'{scene_id}.h5'), 'r') as f:
             print(f[key].keys())
             gt_flow = f[key]['flow'][:]
             print('gt flow:', gt_flow.shape)    
@@ -89,6 +97,8 @@ def vis(index,
     pc1_no_ground = pc1[~gm1]
     pc0_flow_no_ground = (pc0 + data_dict[vis_name])[~gm0] ## why?
     pc0_gt_flow_no_ground = (pc0 + gt_flow)[~gm0] ## why?
+    
+    
     print(f"scene_id: {scene_id}, timestamp: {timestamp}")
     print(f"pc0: {pc0.shape}, gm0: {gm0.shape}, pc1: {pc1.shape}, gm1: {gm1.shape}")
     print(f"pc0_no_ground: {transform_pc0_no_ground.shape}")
@@ -98,10 +108,10 @@ def vis(index,
     mask = np.linalg.norm(data_dict[vis_name][~gm0], axis = -1) > 3.33
     print('mask > 3.33:', sum(mask))
     pc_list = [
-        # dict(
-        #     pc = transform_pc0_no_ground,
-        #     name = 'pc0'
-        # ),
+        dict(
+            pc = transform_pc0_no_ground,
+            name = 'transform_pc0'
+        ),
 
         dict(
             pc = pc0_flow_no_ground,
@@ -109,13 +119,15 @@ def vis(index,
         ) ,
         
         dict(
-            pc = pc0_gt_flow_no_ground,
-            name = 'pc0+gt_flow'
+            pc = pc1_no_ground,
+            name = 'pc1'
         ),
     ]
     visualize_pcd_list(pc_list)
 
 if __name__ == '__main__':
+    
+
     start_time = time.time()
-    fire.Fire(vis)
+    vis()
     print(f"Time used: {time.time() - start_time:.2f} s")

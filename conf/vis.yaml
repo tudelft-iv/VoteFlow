@@ -1,0 +1,7 @@
+dataset_path: data/Argoverse2_demo/preprocess_v2/sensor/val_vis
+vis_name: # if None will directly be the `model_name.ckpt` in checkpoint path
+index: 0
+
+load_dict: False
+save_reformulated_vis: False
+save_dir:  outputs/reformulated_vis_outputs/${vis_name}
