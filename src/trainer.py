@@ -171,15 +171,25 @@ class ModelWrapper(LightningModule):
             pass
 
     def configure_optimizers(self):
+        
         optimizer = optim.Adam(self.model.parameters(), lr=self.lr)
-        return optimizer
+        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=self.trainer.max_epochs//2, gamma=0.1)
 
+        return {'optimizer': optimizer, 
+                'lr_scheduler': scheduler}
+    
     def on_train_epoch_start(self):
         self.time_start_train_epoch = time.time()
-
+        
     def on_train_epoch_end(self):
         self.log("pre_epoch_cost (mins)", (time.time()-self.time_start_train_epoch)/60.0, on_step=False, on_epoch=True, sync_dist=True)
-    
+        # sch = self.lr_schedulers()
+        # current_lr = sch.get_last_lr()
+        # current_lr_opt = self.optimizers().param_groups[0]['lr']
+        # self.log("lr", current_lr[0], on_step=False, on_epoch=True, sync_dist=True)
+        # print('lr:', current_lr)
+        # print('lr_opt:', current_lr_opt)
+        
     def on_validation_epoch_end(self):
         self.model.timer.print(random_colors=False, bold=False)
 

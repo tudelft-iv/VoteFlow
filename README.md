@@ -45,8 +45,9 @@ python dataprocess/extract_av2.py --av2_type sensor --data_mode test --argo_dir 
 python train.py model=sf_voxel_model lr=2e-4 epochs=20 batch_size=2 loss_fn=warpedLoss
 ```
 training on the complete dataset on 4 gpus
+
 ```python
-python train.py model=sf_voxel_model lr=1e-3 epochs=20 batch_size=2 loss_fn=warpedLoss gpus=4 wandb_mode=online
+python train.py model=sf_voxel_model lr=1e-3 epochs=20 batch_size=2 loss_fn=warpedLoss gpus=[0,1,2,3] wandb_mode=online exp_note="the_special_description_for_this_experiment"
 ```
 
 ```python

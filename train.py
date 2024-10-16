@@ -63,8 +63,8 @@ def main(cfg):
     if cfg.use_demo_data:
         cfg.train_data = 'data/Argoverse2_demo/preprocess_v2/sensor/train'
         cfg.val_data = 'data/Argoverse2_demo/preprocess_v2/sensor/val'
-    print('Train dataset path', cfg.train)
-    print('Val dataset path', cfg.val)
+    print('Train dataset path', cfg.train_data)
+    print('Val dataset path', cfg.val_data)
     train_dataset = HDF5Dataset(cfg.train_data, n_frames=cfg.num_frames, dufo=(cfg.loss_fn == 'seflowLoss'))
     train_loader = DataLoader(train_dataset,
                               batch_size=cfg.batch_size,
@@ -115,10 +115,11 @@ def main(cfg):
 
     if cfg.wandb_mode != "disabled":
         logger = WandbLogger(save_dir=output_dir,
-                            project=f"{cfg.wandb_project_name}", 
-                            name=f"{cfg.wandb_run_name}",
-                            offline=(cfg.wandb_mode == "offline"),
-                            log_model=(True if cfg.wandb_mode == "online" else False))
+                             entity='sceneflow_translation_voting',
+                            project=f'{cfg.wandb_project_name}', 
+                            name=f'{cfg.wandb_run_name}',
+                            offline=(cfg.wandb_mode == 'offline'),
+                            log_model=(True if cfg.wandb_mode == 'online' else False))
         logger.watch(model, log_graph=False)
     else:
         # check local tensorboard logging: tensorboard --logdir logs/jobs/{log folder}

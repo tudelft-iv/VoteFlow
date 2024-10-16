@@ -32,6 +32,7 @@ dependencies:
     - dztimer
     - torch-scatter
     - av2==0.2.1
+    - timm
 
 # Reason about the version fixed:
 # setuptools==68.5.1: https://github.com/aws-neuron/aws-neuron-sdk/issues/893
