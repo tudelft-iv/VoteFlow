@@ -24,6 +24,6 @@ previous=$(nvidia-smi --query-accounted-apps='gpu_utilization,mem_utilization,ma
 
 nvidia-smi
 
-srun python train.py lr=2e-5 epochs=20 batch_size=8 loss_fn=warpedLoss gpus=[0,1,2,3] wandb_mode=online exp_note="lower_lr_1e-5"
+srun python train.py lr=2e-5 epochs=20 batch_size=8 loss_fn=warpedLoss wandb_mode=online exp_note="lower_lr_1e-5"
 
 nvidia-smi --query-accounted-apps='gpu_utilization,mem_utilization,max_memory_usage,time' --format='csv' | /usr/bin/grep -v -F "$previous"

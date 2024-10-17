@@ -129,6 +129,9 @@ def main(cfg):
         num_gpus = len(cfg.gpus)
     elif isinstance(cfg.gpus,int):
         num_gpus = cfg.gpus
+    elif cfg.gpus == 'auto':
+        cfg.gpus = torch.cuda.device_count() if torch.cuda.is_available() else 0
+        num_gpus = cfg.gpus
     else:
         raise ValueError("cfg.gpus should be a list or int.")
             

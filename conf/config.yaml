@@ -23,7 +23,7 @@ eval_only: False
 
 # trainer
 num_workers: 8
-gpus: 1 # will change in code: torch.cuda.device_count()
+gpus: 'auto' # will change in code: torch.cuda.device_count()
 sync_bn: true
 batch_size: 1
 epochs: 3
