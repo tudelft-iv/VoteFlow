@@ -77,17 +77,35 @@ class SFVoxelModel(nn.Module):
         self.timer.start("Total")
 
     def process_points_per_pair(self, voxel_info_src, voxel_info_dst):
-        valid_point_idxs_src = voxel_info_src['point_idxes']
+        valid_point_idxs_src = voxel_info_src['point_idxes'] # [N_valid_pts]
         valid_point_idxs_dst = voxel_info_dst['point_idxes']
-        valid_voxel_coords_src = voxel_info_src['voxel_coords']
+        valid_voxel_coords_src = voxel_info_src['voxel_coords'] #[N_valid_pts, 3]
         valid_voxel_coords_dst = voxel_info_dst['voxel_coords']
-
+        
+        # print('keys in the voxel info:', voxel_info_src.keys())
+        # print('valid_points_src:', voxel_info_src['points'].shape)
+        # print('valid_points_dst:', voxel_info_dst['points'].shape)
+        # print('valid_point_idxs_src:', valid_point_idxs_src.shape)
+        # # print('valid_point_idxs_src_top_20:', valid_point_idxs_src[:20])
+        # print('valid_point_idxs_dst:', valid_point_idxs_dst.shape)
+        # print('valid_voxel_coords_src:', valid_voxel_coords_src.shape)
+        # # print('valid_voxel_coords_src_top_20:', valid_voxel_coords_src[:20,:])
+        # print('valid_voxel_coords_dst:', valid_voxel_coords_dst.shape)
+        # print('pseudo_image_dims:', self.pseudo_image_dims)
+        
         unq_voxel_coords_src, point_voxel_idxs_src = calculate_unq_voxels(valid_voxel_coords_src, self.pseudo_image_dims)
         unq_voxel_coords_dst, point_voxel_idxs_dst = calculate_unq_voxels(valid_voxel_coords_dst, self.pseudo_image_dims)
 
+        # unq_voxel_coords_src # [N_valid_voxels, 2]
+        # point_voxel_idxs_src # [N_valid_pts], the index of the unique voxel for each point    
+        
         dists_dst, knn_idxs_dst, _ = pytorch3d_ops.ball_query(unq_voxel_coords_src[None].float(), unq_voxel_coords_dst[None].float(), lengths1=None, lengths2=None, K=self.n, return_nn=False, radius=self.radius_dst)
         dists_src, knn_idxs_src, _ = pytorch3d_ops.ball_query(unq_voxel_coords_src[None].float(), unq_voxel_coords_src[None].float(), lengths1=None, lengths2=None, K=self.m, return_nn=False, radius=self.radius_src)
         
+        # print('unq_voxel_coords_src:', unq_voxel_coords_src.shape) # [N_valid_voxels, 2]
+        # print('knn_idxs_dst:', knn_idxs_dst.shape) # [1, N_valid_voxels, n], n=64,  the index of n nerest voxels in dst for each voxel in src
+        # print('knn_idxs_src:', knn_idxs_src.shape) # [1, N_valid_voxels, m], m=8, the index of n nerest voxels in src for each voxel in src
+
         return valid_point_idxs_src, valid_point_idxs_dst, point_voxel_idxs_src, point_voxel_idxs_dst, unq_voxel_coords_src, unq_voxel_coords_dst, knn_idxs_src[0], knn_idxs_dst[0]
                 
     def preprocessing(self, points_src, points_dst, voxel_info_list_src, voxel_info_list_dst):
@@ -204,35 +222,50 @@ class SFVoxelModel(nn.Module):
         self.timer[1][1].start("Preprocessing")
         with torch.no_grad():
             point_masks_src, point_masks_dst, \
-                point_voxel_idxs_src, point_voxel_idxs_dst, \
-                    point_offsets_src, \
-                    voxels_src, voxels_dst, \
-                        knn_idxs_src, knn_idxs_dst = self.preprocessing(points_src, points_dst, voxel_infos_lst_src, voxel_infos_lst_dst)
+            point_voxel_idxs_src, point_voxel_idxs_dst, \
+            point_offsets_src, \
+            voxels_src, voxels_dst, \
+            knn_idxs_src, knn_idxs_dst = self.preprocessing(points_src, points_dst, voxel_infos_lst_src, voxel_infos_lst_dst)
         self.timer[1][1].stop()
         
         self.timer[1][2].start("Feature extraction")
         pseudoimages_grid = self.backbone(pseudoimages_src, pseudoimages_dst)
-        feats_voxel_src = self.extract_voxel_from_image(pseudoimages_grid, voxels_src)
-        feats_voxel_dst = self.extract_voxel_from_image(pseudoimages_grid, voxels_dst)
+        feats_voxel_src = self.extract_voxel_from_image(pseudoimages_grid, voxels_src) # [B, N_valid_voxels, C]
+        feats_voxel_dst = self.extract_voxel_from_image(pseudoimages_grid, voxels_dst) # [B, N_valid_voxels, C]
+        
+        # print('unique_voxels', voxels_src.shape)
+        # print('feats_voxel_src:', feats_voxel_src.shape)
+        # print('feats_voxel_dst:', feats_voxel_dst.shape)
+        
         self.timer[1][2].stop()
         
         self.timer[1][3].start("Gathering")
         feats_voxel_dst_inflate = batched_masked_gather(feats_voxel_dst, knn_idxs_dst.long(), knn_idxs_dst>=0, fill_value=0)
-        corr_src_dst = (feats_voxel_src[:, :, None, :] * feats_voxel_dst_inflate).sum(dim=-1) # [b, l, self.n]
+        # print('feats_voxel_dst_inflate:', feats_voxel_dst_inflate.shape)
+        # print('math1:', (feats_voxel_src[:, :, None, :] * feats_voxel_dst_inflate).shape)
+        # corr_src_dst = (feats_voxel_src[:, :, None, :] * feats_voxel_dst_inflate).sum(dim=-1) # [b, l, self.n]
+        corr_src_dst = torch.nn.functional.cosine_similarity(feats_voxel_src[:, :, None, :], feats_voxel_dst_inflate, dim=-1)
         # print('corr_src_dst:', corr_src_dst.shape)
         corr_inflate = batched_masked_gather(corr_src_dst, knn_idxs_src.long(), knn_idxs_src>=0, fill_value=0)
+        # print('corr_inflate:', corr_inflate.shape, corr_inflate.max(), corr_inflate.min())  
         self.timer[1][3].stop()
         
         self.timer[1][4].start("Voting")
         vols= self.vote(corr_inflate, voxels_src, voxels_dst, knn_idxs_src, knn_idxs_dst) 
-        # print('vols:', vols.shape)  
+        # print('voting  vols:', vols.shape, vols.max(), vols.min()) 
         vols = self.volconv(vols)
+        # print('voting  vols after volconv:', vols.shape, vols.max(), vols.min())
         self.timer[1][4].stop()
         
         self.timer[1][5].start("Decoding")
         feats_point_vol = self.extract_point_from_voxel(vols, point_voxel_idxs_src)
         feats_point_src_init = self.extract_point_from_image(torch.cat([pseudoimages_src, pseudoimages_dst], dim=1), voxels_src, point_voxel_idxs_src)
         feats_point_src_grid = self.extract_point_from_image(pseudoimages_grid,  voxels_src, point_voxel_idxs_src)
+        
+        # print('feats_point_vol:', feats_point_vol.max(), feats_point_vol.min())
+        # print('feats_point_src_init:', feats_point_src_init.max(), feats_point_src_init.min())
+        # print('feats_point_src_grid:', feats_point_src_grid.max(), feats_point_src_grid.min())
+        
         feats_cat = self.concat_feats(feats_point_vol, feats_point_src_init, feats_point_src_grid)
         # print('pseudoimages_src:', pseudoimages_src.shape)
         # print('pseudoimages_dst:', pseudoimages_dst.shape)

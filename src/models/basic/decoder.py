@@ -95,8 +95,8 @@ class LinearDecoder(nn.Module):
         before_voxel_vectors = before_pseudoimage[:, voxel_coords[:, 1],
                                                   voxel_coords[:, 2]].T
         
-        # print('before_pseudoimage:', before_pseudoimage.shape)
-        # print('after_pseudoimage:', after_pseudoimage.shape)
+        # print('before_pseudoimage:', before_voxel_vectors.shape, before_pseudoimage.max(), before_pseudoimage.min())
+        # print('after_pseudoimage:', after_voxel_vectors.shape, after_pseudoimage.max(), after_pseudoimage.min())
         # print('point_offsets: ', point_offsets.shape)
         # print('voxel_coords: ', voxel_coords.shape)
         # [N, 64] [N, 64] -> [N, 128]
