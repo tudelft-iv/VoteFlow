@@ -75,6 +75,27 @@ class Decoder(nn.Module):
         x = self.decoder(x)
         
         return x
+    
+class SimpleDecoder(nn.Module):
+    def __init__(self, dim_input=16, dim_output=3, layer_size=1):
+        super().__init__()
+        # self.linear = nn.Linear(m*dim_input, dim_output)
+        filter_size=128
+        decoder = nn.ModuleList()
+        decoder.append(torch.nn.Linear(dim_input, filter_size))
+        decoder.append(torch.nn.GELU())
+        for _ in range(layer_size-1):
+            decoder.append(torch.nn.Linear(filter_size, filter_size))
+            decoder.append(torch.nn.ReLU())
+        decoder.append(torch.nn.Linear(filter_size, dim_output))
+        self.decoder = nn.Sequential(*decoder)
+        
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        b, l, _ = x.shape
+        # print('decoder conv: ', x.shape)
+        x = self.decoder(x)
+        
+        return x
 
 class ConvWithNorms(nn.Module):
 

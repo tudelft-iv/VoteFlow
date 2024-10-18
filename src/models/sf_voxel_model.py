@@ -12,7 +12,7 @@ from .basic.decoder import LinearDecoder
 from .basic import cal_pose0to1
 
 from .ht.ht_cuda import HT_CUDA
-from .model_utils.util_model import Backbone, VolConv, Decoder, FastFlowUNet
+from .model_utils.util_model import Backbone, VolConv, Decoder, FastFlowUNet, SimpleDecoder
 from .model_utils.util_func import float_division, tensor_mem_size, calculate_unq_voxels, batched_masked_gather, pad_to_batch
 
 import warnings
@@ -29,6 +29,7 @@ class SFVoxelModel(nn.Module):
                  point_cloud_range = [-51.2, -51.2, -3, 51.2, 51.2, 3], 
                  voxel_size=(0.2, 0.2, 0.2),
                  grid_feature_size = [512, 512],
+                 only_use_vol_feats=False,
                  **kwargs):
         super().__init__()
         
@@ -49,6 +50,8 @@ class SFVoxelModel(nn.Module):
         self.nz = nz*2 # +/-z
         print('n x/y/z: ', self.nx, self.ny, self.nz)
 
+        self.only_use_vol_feats = only_use_vol_feats
+                
         pseudo_image_dims = grid_feature_size[:2] #int((point_cloud_range[3]-point_cloud_range[0])/voxel_size[0]), int((point_cloud_range[4]-point_cloud_range[1])/voxel_size[1])) # ignore z dimension
     
         self.nframes = nframes
@@ -66,7 +69,12 @@ class SFVoxelModel(nn.Module):
         self.backbone = FastFlowUNet(input_channels, output_channels) ## output_channel 64
         self.vote = HT_CUDA(self.ny, self.nx, self.nz)
         self.volconv = VolConv(self.ny, self.nx, self.nz, dim_output=output_channels)
-        self.decoder = Decoder(dim_input= output_channels * 2 + input_channels*2 , dim_output=3)
+        
+        if self.only_use_vol_feats:
+            self.decoder = SimpleDecoder(dim_input=output_channels, dim_output=3)
+            print(self.decoder)
+        else:
+            self.decoder = Decoder(dim_input= output_channels * 2 + input_channels*2 , dim_output=3)
         
         self.embedder = DynamicEmbedder(voxel_size=voxel_size,
                                 pseudo_image_dims=pseudo_image_dims,
@@ -262,11 +270,15 @@ class SFVoxelModel(nn.Module):
         feats_point_src_init = self.extract_point_from_image(torch.cat([pseudoimages_src, pseudoimages_dst], dim=1), voxels_src, point_voxel_idxs_src)
         feats_point_src_grid = self.extract_point_from_image(pseudoimages_grid,  voxels_src, point_voxel_idxs_src)
         
-        # print('feats_point_vol:', feats_point_vol.max(), feats_point_vol.min())
-        # print('feats_point_src_init:', feats_point_src_init.max(), feats_point_src_init.min())
-        # print('feats_point_src_grid:', feats_point_src_grid.max(), feats_point_src_grid.min())
+        # print('feats_point_vol:', feats_point_vol.shape, feats_point_vol.max(), feats_point_vol.min())
+        # print('feats_point_src_init:', feats_point_src_init.shape, feats_point_src_init.max(), feats_point_src_init.min())
+        # print('feats_point_src_grid:', feats_point_src_grid.shape, feats_point_src_grid.max(), feats_point_src_grid.min())
         
-        feats_cat = self.concat_feats(feats_point_vol, feats_point_src_init, feats_point_src_grid)
+        if self.only_use_vol_feats:
+            flows = self.decoder(feats_point_vol)
+        else: 
+            feats_cat = self.concat_feats(feats_point_vol, feats_point_src_init, feats_point_src_grid)
+            # print('feats_cat:', feats_cat.shape, feats_cat.max(), feats_cat.min())
         # print('pseudoimages_src:', pseudoimages_src.shape)
         # print('pseudoimages_dst:', pseudoimages_dst.shape)
         # print('voxels_src:', voxels_src.shape)  
@@ -282,7 +294,7 @@ class SFVoxelModel(nn.Module):
         #     print('voxel_info:', voxel_info['point_offsets'].shape)
         # print('point_offsets_src:', point_offsets_src.shape)
         
-        flows = self.decoder(feats_cat, point_offsets_src)
+            flows = self.decoder(feats_cat, point_offsets_src)
         self.timer[1][5].stop()
         
         pc0_points_lst = [e["points"] for e in voxel_infos_lst_src]

@@ -9,6 +9,7 @@ target:
   n: 64
   input_channels: 32
   output_channels: 64
+  only_use_vol_feats: False
 
 val_monitor: val/Dynamic/Mean
 exp_id: ${model.name}_m_${model.target.m}_n_${model.target.n}
