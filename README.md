@@ -69,3 +69,7 @@ visualize with our tool
 ```python
 python o3d_visualization.py index=17 res_name=sf_voxel_model  
 ```
+
+## Training Curves
+
+[FastFlow3D_with_warped_loss](https://api.wandb.ai/links/shimingwang/v2qjgglj)
