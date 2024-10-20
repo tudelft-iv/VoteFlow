@@ -192,8 +192,13 @@ class SFVoxelModel(nn.Module):
     def extract_voxel_from_image(self, image, voxels):
         # image: [b, c, h, w]; voxels: [b, num, 2]
         idxs = voxels[:, :, 0] * self.pseudo_image_dims[0] + voxels[:, :, 1]
+        
+        mask = voxels.min(-1)[0]>=0
+        
         b, c, h, w = image.shape
-        feats_per_voxel = batched_masked_gather(image.view(b, c, h*w).permute(0, 2, 1), idxs[:, :, None].long(), idxs[:, :, None]>=0, fill_value=-1)
+        
+        feats_per_voxel = batched_masked_gather(image.view(b, c, h*w).permute(0, 2, 1), idxs[:, :, None].long(), mask[:, :, None], fill_value=-1)
+        
         # print('point per voxel: ', feats_per_voxel.shape)
         return feats_per_voxel[:, :, 0, :] # [b, num , c]
 

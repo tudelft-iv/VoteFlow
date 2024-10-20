@@ -64,8 +64,8 @@ class Decoder(nn.Module):
             decoder.append(torch.nn.ReLU())
         decoder.append(torch.nn.Linear(filter_size, dim_output))
         
-        
         self.decoder = nn.Sequential(*decoder)
+        print(self.decoder)
         
     def forward(self, x: torch.Tensor, pts_offsets: torch.Tensor) -> torch.Tensor:
         b, l, _ = x.shape

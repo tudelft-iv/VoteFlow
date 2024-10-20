@@ -54,12 +54,15 @@ __global__ void im2ht_cuda_forward_kernel(const int64_t n_threads,
       bin_x += w/2;
       bin_y += h/2;
 
-      if (bin_x >=0 && bin_x < w && bin_y >= 0 && bin_y < h)
+      if (y_src_tmp >=0 && x_src_tmp >=0 && y_dst_tmp >= 0 && x_dst_tmp >=0)
       {
-        // (0, 0) is at position (h//2, w//2)
-        // vol_ht: [b, l, h, w]; 
-        int64_t offset_tmp =  b_tmp * (l * h * w) + l_tmp * (h * w) + bin_y * w + bin_x;
-        atomicAdd(vol_ht+offset_tmp, feat_tmp);
+        if (bin_x >=0 && bin_x < w && bin_y >= 0 && bin_y < h)
+        {
+          // (0, 0) is at position (h//2, w//2)
+          // vol_ht: [b, l, h, w]; 
+          int64_t offset_tmp =  b_tmp * (l * h * w) + l_tmp * (h * w) + bin_y * w + bin_x;
+          atomicAdd(vol_ht+offset_tmp, feat_tmp);
+        }
       }
     }
   }
@@ -103,16 +106,19 @@ __global__ void im2ht_cuda_backward_kernel(const int n_threads,
       bin_x += w/2;
       bin_y += h/2;
 
-      if (bin_x >=0 && bin_x < w && bin_y >= 0 && bin_y < h)
+      if (y_src_tmp >=0 && x_src_tmp >=0 && y_dst_tmp >= 0 && x_dst_tmp >=0)
       {
-        // (0, 0) is at position (h//2, w//2)
-        //  vol_ht: [b, l, h, w];
-        // output gradients
-        int offset_vol_tmp =  b_tmp * (l * h * w) + l_tmp * (h * w) + bin_y * w + bin_x;
-        scalar_t grad_vol_tmp = grad_vol_ht[offset_vol_tmp];  // 
-        // input grads
-        int offset_feat_tmp = b_tmp * (l * m * n) + l_tmp * (m * n) + m_tmp * n + n_tmp;  // in [b, l, m, n]
-        atomicAdd(grad_feats+offset_feat_tmp, grad_vol_tmp);
+        if (bin_x >=0 && bin_x < w && bin_y >= 0 && bin_y < h)
+        {
+          // (0, 0) is at position (h//2, w//2)
+          //  vol_ht: [b, l, h, w];
+          // output gradients
+          int offset_vol_tmp =  b_tmp * (l * h * w) + l_tmp * (h * w) + bin_y * w + bin_x;
+          scalar_t grad_vol_tmp = grad_vol_ht[offset_vol_tmp];  // 
+          // input grads
+          int offset_feat_tmp = b_tmp * (l * m * n) + l_tmp * (m * n) + m_tmp * n + n_tmp;  // in [b, l, m, n]
+          atomicAdd(grad_feats+offset_feat_tmp, grad_vol_tmp);
+        }
       }
     }
   }
