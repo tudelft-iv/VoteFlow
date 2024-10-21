@@ -160,7 +160,7 @@ def ff3dLoss(res_dict):
     return {'loss': error.mean()}
 
 
-def warpedLoss(res_dict, dist_threshold=3.33):
+def warpedLoss(res_dict, dist_threshold=2):
     pred = res_dict['est_flow']
     
     pc0 = res_dict['pc0']
