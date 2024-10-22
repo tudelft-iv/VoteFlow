@@ -7,7 +7,7 @@ import os.path as osp
 import shutil
 import matplotlib.pyplot as plt
 import numpy as np
-import open3d as o3d
+# import open3d as o3d
 import pandas as pd
 import torch
 from torch.utils.data import DataLoader
