@@ -3,8 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from typing import List, Tuple
 
-from assets.cuda.mmcv import Voxelization
-from assets.cuda.mmcv import DynamicScatter
+from mmcv.ops import Voxelization, DynamicScatter
 
 def get_paddings_indicator(actual_num, max_num, axis=0):
     """Create boolean mask by actually number of a padded tensor.
