@@ -17,6 +17,8 @@ tmp_sbatch.sh
 
 *.h5
 
+*.idea
+
 *.zip
 
 cancel.sh
