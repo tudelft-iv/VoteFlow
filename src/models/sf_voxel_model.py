@@ -264,9 +264,30 @@ class SFVoxelModel(nn.Module):
         self.timer[1][3].stop()
         
         self.timer[1][4].start("Voting")
-        vols= self.vote(corr_inflate, voxels_src, voxels_dst, knn_idxs_src, knn_idxs_dst) 
-        # print('voting  vols:', vols.shape, vols.max(), vols.min()) 
-        vols = self.volconv(vols)
+        
+        voting_vols= self.vote(corr_inflate, voxels_src, voxels_dst, knn_idxs_src, knn_idxs_dst) 
+        # print('voting  vols:', vols.shape, vols[0].max(), vols[0].min()) 
+        
+        # vols_flattened = vols.view(vols.shape[0], vols.shape[1], -1)
+        
+        # print('vols_flattened:', vols_flattened.shape, vols_flattened[0].max(), vols_flattened[0].min())
+        
+        # for vol in vols_flattened:
+        #     print('vol:', vol.shape, vol.max(), vol.min())
+        #     topk_voting, topk_idx = torch.topk(vol, 5, dim=-1)
+        #     print('topk voting:', topk_voting.shape, topk_voting.max(), topk_voting.min())
+        #     print('topk idx:', topk_idx.shape)
+        #     # gathered_vol = torch.gather(vol, dim =1, index = topk_idx)
+        #     # print('topk idx verfi:', gathered_vol.shape)
+        #     # print(torch.eq(gathered_vol, topk_voting).all())
+        #     print('topk voting values:', topk_voting[:10, :])
+            
+        #     norm_topk_voting = topk_voting
+            
+            
+            
+        
+        vols = self.volconv(voting_vols)
         # print('voting  vols after volconv:', vols.shape, vols.max(), vols.min())
         self.timer[1][4].stop()
         
@@ -319,6 +340,9 @@ class SFVoxelModel(nn.Module):
         # print('point_masks_src:', point_masks_src.shape, sum(point_masks_src[0]), sum(point_masks_src[1]))
 
         model_res = {
+            "voting_vol": voting_vols,
+            "points_src_offset": point_offsets_src,
+            "points_src_voxel_idx": point_voxel_idxs_src,
             "flow": flows_reshape,
             "pc0_points_lst": pc0_points_lst,
             "pc1_points_lst": pc1_points_lst,
