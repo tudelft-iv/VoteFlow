@@ -33,10 +33,10 @@ class VolConv(nn.Module):
         super().__init__()
         assert h%2==0
         assert w%2==0
-        self.conv1 = ConvBlock(in_num_channels=1, out_num_channels=16)
-        self.conv2 = ConvBlock(in_num_channels=16, out_num_channels=16)
+        self.conv1 = ConvBlock(in_num_channels=1, out_num_channels=64)
+        self.conv2 = ConvBlock(in_num_channels=64, out_num_channels=64)
         self.maxpool = nn.MaxPool2d(2)
-        self.linear = nn.Linear((h//4) * (w//4) * 16, dim_output)
+        self.linear = nn.Linear((h//4) * (w//4) * 64, dim_output)
         self.relu = nn.ReLU()
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
