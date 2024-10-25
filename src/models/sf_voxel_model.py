@@ -288,7 +288,7 @@ class SFVoxelModel(nn.Module):
             
         
         vols = self.volconv(voting_vols)
-        print('voting  vols after volconv:', voting_vols.shape, vols.shape, vols.max(), vols.min())
+        # print('voting  vols after volconv:', voting_vols.shape, vols.shape, vols.max(), vols.min())
         self.timer[1][4].stop()
         
         self.timer[1][5].start("Decoding")
