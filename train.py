@@ -86,12 +86,12 @@ def main(cfg):
 
     output_dir = HydraConfig.get().runtime.output_dir
     # overwrite logging folder name for SSL.
-    if cfg.loss_fn == 'seflowLoss':
-        cfg.output = cfg.output.replace(cfg.model.name, "seflow")
-        output_dir = output_dir.replace(cfg.model.name, "seflow")
-        method_name = "seflow"
-    else:
-        method_name = cfg.model.name
+    # if cfg.loss_fn == 'seflowLoss':
+    #     cfg.output = cfg.output.replace(cfg.model.name, "seflow")
+    #     output_dir = output_dir.replace(cfg.model.name, "seflow")
+    #     method_name = "seflow"
+    # else:
+    method_name = cfg.model.name
 
     # FIXME: hydra output_dir with ddp run will mkdir in the parent folder. Looks like PL and Hydra trying to fix in lib.
     # print(f"Output Directory: {output_dir} in gpu rank: {torch.cuda.current_device()}")

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH --job-name="sf_voxel_model_with_supervised_loss"
+#SBATCH --job-name="sf_voxel_model_with_seloss"
 #SBATCH --partition=cor 
 #SBATCH --time=48:00:00
 
@@ -15,8 +15,8 @@
 #SBATCH --gpus-per-task=8
 
 #SBATCH --mail-type=END
-#SBATCH --output=slurm_logs/slurm_sf_voxel_model_with_supervised_loss_%j.out
-#SBATCH --error=slurm_logs/slurm_sf_voxel_model_with_supervised_loss_%j.err
+#SBATCH --output=slurm_logs/slurm_sf_voxel_model_with_seloss_%j.out
+#SBATCH --error=slurm_logs/slurm_sf_voxel_model_with_seloss_%j.err
 
 module load cuda/11.8
 module load devtoolset/11
@@ -30,6 +30,6 @@ previous=$(nvidia-smi --query-accounted-apps='gpu_utilization,mem_utilization,ma
 
 nvidia-smi
 
-srun python train.py model=sf_voxel_model lr=2e-4 epochs=20 batch_size=2 loss_fn=deflowLoss exp_note="with_deflowLoss_with_z_voxel_6" wandb_mode="online" gpus="auto"
+srun python train.py model=sf_voxel_model lr=2e-4 epochs=10 batch_size=2 loss_fn=seflowLoss exp_note="with_deflowLoss_with_z_voxel_6" wandb_mode="online" gpus="auto" "add_seloss={chamfer_dis: 1.0, static_flow_loss: 1.0, dynamic_chamfer_dis: 1.0, cluster_based_pc0pc1: 1.0}" "model.val_monitor=val/Dynamic/Mean"
 
 nvidia-smi --query-accounted-apps='gpu_utilization,mem_utilization,max_memory_usage,time' --format='csv' | /usr/bin/grep -v -F "$previous"
