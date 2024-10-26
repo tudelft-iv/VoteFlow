@@ -23,6 +23,8 @@ module load devtoolset/11
 module load miniconda/3.9
 
 export LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
+export WANDB_DIR=/home/nfs/shimingwang/workspace/sceneflow_tv/.wandb
+export WANDB_CACHE_DIR=/home/nfs/shimingwang/workspace/sceneflow_tv/.wandb/cache
 
 conda activate sf_tv
 
@@ -30,6 +32,6 @@ previous=$(nvidia-smi --query-accounted-apps='gpu_utilization,mem_utilization,ma
 
 nvidia-smi
 
-srun python train.py model=sf_voxel_model lr=2e-4 epochs=10 batch_size=2 loss_fn=seflowLoss exp_note="with_deflowLoss_with_z_voxel_6" wandb_mode="online" gpus="auto" "add_seloss={chamfer_dis: 1.0, static_flow_loss: 1.0, dynamic_chamfer_dis: 1.0, cluster_based_pc0pc1: 1.0}" "model.val_monitor=val/Dynamic/Mean"
+srun python train.py model=sf_voxel_model lr=2e-4 epochs=20 batch_size=2 loss_fn=seflowLoss exp_note="with_seflowLoss" wandb_mode="online" gpus="auto" "add_seloss={chamfer_dis: 1.0, static_flow_loss: 1.0, dynamic_chamfer_dis: 1.0, cluster_based_pc0pc1: 1.0}" "model.val_monitor=val/Dynamic/Mean"
 
 nvidia-smi --query-accounted-apps='gpu_utilization,mem_utilization,max_memory_usage,time' --format='csv' | /usr/bin/grep -v -F "$previous"
