@@ -67,7 +67,7 @@ def main(cfg):
                     ),
         batch_size=1,
         shuffle=False,
-    # collate_fn=collate_fn_pad,
+    collate_fn=collate_fn_pad,
     pin_memory=True)
 
     eval_loader = DataLoader(
