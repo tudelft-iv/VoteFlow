@@ -169,6 +169,24 @@ class ModelWrapper(LightningModule):
                 self.metrics.step(v1_dict, v2_dict)
         else:
             pass
+        
+    def eval_trainval_step_(self, batch, res_dict):
+        # means there are ground truth flow so we can evaluate the EPE-3 Way metric
+        if batch['flow'].shape[0] > 0:
+            pose_flows = res_dict['pose_flow']
+            gt_flow = batch["flow"]
+            valid_from_pc2res = res_dict['pc0_valid_point_idxes']
+            pose_flow = pose_flows[valid_from_pc2res]
+
+            final_flow_ = pose_flow.clone() + res_dict['flow']
+            v1_dict= evaluate_leaderboard(final_flow_, pose_flow, batch['pc0'][valid_from_pc2res], gt_flow[valid_from_pc2res], \
+                                        batch['flow_is_valid'][valid_from_pc2res], batch['flow_category_indices'][valid_from_pc2res])
+            v2_dict = evaluate_leaderboard_v2(final_flow_, pose_flow, batch['pc0'][valid_from_pc2res], gt_flow[valid_from_pc2res], \
+                                    batch['flow_is_valid'][valid_from_pc2res], batch['flow_category_indices'][valid_from_pc2res])
+            
+            self.metrics.step(v1_dict, v2_dict)
+        else:
+            pass
 
     def configure_optimizers(self):
         
@@ -265,7 +283,7 @@ class ModelWrapper(LightningModule):
             if self.leaderboard_version == 2:
                 save_pred_flow = (final_flow - pose_flow).cpu().detach().numpy() # all points here... since 2rd version we need to save the relative flow.
             write_output_file(save_pred_flow, is_dynamic, sweep_uuid, self.save_res_path, leaderboard_version=self.leaderboard_version)
-
+    
     def run_model_wo_ground_data(self, batch):
         # NOTE (Qingwen): only needed when val or test mode, since train we will go through collate_fn to remove.
         batch['origin_pc0'] = batch['pc0'].clone()
@@ -283,7 +301,10 @@ class ModelWrapper(LightningModule):
         return batch, res_dict
     
     def validation_step(self, batch, batch_idx):
-        if self.av2_mode == 'val' or self.av2_mode == 'test':
+        if self.av2_mode == 'val':
+            batch, res_dict = self.run_model_wo_ground_data(batch)
+            self.eval_only_step_(batch, res_dict)
+        elif self.av2_mode == 'test':
             batch, res_dict = self.run_model_wo_ground_data(batch)
             self.eval_only_step_(batch, res_dict)
         else:

@@ -17,7 +17,7 @@ from lightning.pytorch.loggers import WandbLogger
 from omegaconf import DictConfig
 import hydra, wandb, os, sys
 from hydra.core.hydra_config import HydraConfig
-from src.dataset import HDF5Dataset
+from src.dataset import HDF5Dataset, collate_fn_pad
 from src.trainer import ModelWrapper
 
 def precheck_cfg_valid(cfg):
@@ -58,11 +58,14 @@ def main(cfg):
     trainer = pl.Trainer(logger=wandb_logger, devices=cfg.gpus)
     # NOTE(Qingwen): search & check: def eval_only_step_(self, batch, res_dict)
     
-    eval_loader = DataLoader(HDF5Dataset(cfg.dataset_path + f"/{cfg.av2_mode}", 
-                                        n_frames=checkpoint_params.cfg.num_frames  if 'num_frames' in checkpoint_params.cfg else 2),
-                                        batch_size=1,
-                                        shuffle=False,
-                                        eval=True)
+    eval_loader = DataLoader(
+        HDF5Dataset(cfg.dataset_path + f"/{cfg.av2_mode}", 
+                    n_frames=checkpoint_params.cfg.num_frames  if 'num_frames' in checkpoint_params.cfg else 2,
+                    eval=True),
+        batch_size=1,
+        # collate_fn=collate_fn_pad,
+        pin_memory=True,
+        shuffle=False)
 
     print(f"---LOG[eval]: Start evaluation on {cfg.dataset_path}/{cfg.av2_mode}.")
     print(f"---LOG[eval]: Lenth of the val data: {len(eval_loader)}.")
