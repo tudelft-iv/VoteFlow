@@ -74,6 +74,7 @@ class ModelWrapper(LightningModule):
         # NOTE(Qingwen): since we have seflow version which is unsupervised, we need to set the flag to false.
         self.supervised_flag = cfg.supervised_flag if 'supervised_flag' in cfg else True
         self.save_res = False
+        
         if 'av2_mode' in cfg:
             self.av2_mode = cfg.av2_mode
             self.save_res = cfg.save_res if 'save_res' in cfg else False
@@ -263,7 +264,9 @@ class ModelWrapper(LightningModule):
             final_flow[~batch['gm0']] = pred_flow
         else:
             final_flow[~batch['gm0']] = res_dict['flow'] + pose_flow[~batch['gm0']]
-
+        # print('eval_mask:', eval_mask.shape, eval_mask.sum())
+        # print('valid idx:', valid_from_pc2res.shape)
+        # print('final flow:', final_flow.shape)
         if self.av2_mode == 'val': # since only val we have ground truth flow to eval
             gt_flow = batch["flow"]
             v1_dict = evaluate_leaderboard(final_flow[eval_mask], pose_flow[eval_mask], pc0[eval_mask], \
@@ -301,7 +304,12 @@ class ModelWrapper(LightningModule):
         return batch, res_dict
     
     def validation_step(self, batch, batch_idx):
-        if self.av2_mode == 'val':
+        if self.av2_mode == 'trainval':
+            # print('Evaluation in trainval mode')
+            batch, res_dict = self.run_model_wo_ground_data(batch)
+            self.eval_trainval_step_(batch, res_dict)
+        elif self.av2_mode == 'val':
+            # print('Evaluation in val mode')
             batch, res_dict = self.run_model_wo_ground_data(batch)
             self.eval_only_step_(batch, res_dict)
         elif self.av2_mode == 'test':
@@ -334,7 +342,7 @@ class ModelWrapper(LightningModule):
         key = str(batch['timestamp'])
         scene_id = batch['scene_id']
         ## hard code to save outputs
-        save_dir = 'outputs/sf_voxel_model_overfitting_val_demo'
+        save_dir = f'outputs/{self.vis_name}'
         sub_dir = os.path.join(save_dir,f'{scene_id}')
         if not os.path.exists(sub_dir):
                 os.makedirs(sub_dir)

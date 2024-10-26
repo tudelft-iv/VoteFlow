@@ -58,22 +58,40 @@ def main(cfg):
     trainer = pl.Trainer(logger=wandb_logger, devices=cfg.gpus)
     # NOTE(Qingwen): search & check: def eval_only_step_(self, batch, res_dict)
     
+
+    print(cfg.dataset_path)
+    
+    val_loader = DataLoader(
+        HDF5Dataset(cfg.dataset_path + "/val", 
+                    n_frames=checkpoint_params.cfg.num_frames  if 'num_frames' in checkpoint_params.cfg else 2,
+                    ),
+        batch_size=1,
+        shuffle=False,
+    # collate_fn=collate_fn_pad,
+    pin_memory=True)
+
     eval_loader = DataLoader(
         HDF5Dataset(cfg.dataset_path + f"/{cfg.av2_mode}", 
-                    n_frames=checkpoint_params.cfg.num_frames  if 'num_frames' in checkpoint_params.cfg else 2,
-                    eval=True),
+                n_frames=checkpoint_params.cfg.num_frames  if 'num_frames' in checkpoint_params.cfg else 2,
+                eval=True),
         batch_size=1,
         # collate_fn=collate_fn_pad,
         pin_memory=True,
         shuffle=False)
-
+        
+        
     print(f"---LOG[eval]: Start evaluation on {cfg.dataset_path}/{cfg.av2_mode}.")
-    print(f"---LOG[eval]: Lenth of the val data: {len(eval_loader)}.")
+    print(f"---LOG[eval]: Lenth of the eval data: {len(eval_loader)}, val data: {len(val_loader)}.")
     
-    
-    print(cfg.dataset_path)
+    print(f"---LOG[eval]: Eval on {mymodel.av2_mode}.")
     trainer.validate(model = mymodel, 
-                     dataloaders = eval_loader)
+                    dataloaders = eval_loader)
+    
+    mymodel.av2_mode = 'trainval'
+    print("###"*20)
+    print(f"---LOG[eval]: Eval on {mymodel.av2_mode}.")
+    trainer.validate(model = mymodel, 
+                    dataloaders = val_loader)
     wandb.finish()
 
 if __name__ == "__main__":
