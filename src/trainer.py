@@ -313,7 +313,7 @@ class ModelWrapper(LightningModule):
         key = str(batch['timestamp'])
         scene_id = batch['scene_id']
         ## hard code to save outputs
-        save_dir = 'outputs/sf_voxel_model'
+        save_dir = 'outputs/sf_voxel_model_overfitting_val_demo'
         sub_dir = os.path.join(save_dir,f'{scene_id}')
         if not os.path.exists(sub_dir):
                 os.makedirs(sub_dir)

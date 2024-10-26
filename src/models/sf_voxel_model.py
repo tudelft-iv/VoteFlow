@@ -340,6 +340,12 @@ class SFVoxelModel(nn.Module):
         # print('point_masks_src:', point_masks_src.shape, sum(point_masks_src[0]), sum(point_masks_src[1]))
 
         model_res = {
+            "pseudoimages_src": pseudoimages_src,
+            "pseudoimages_dst": pseudoimages_dst,
+            "pseudoimages_grid": pseudoimages_grid,
+            "feats_voxel_src": feats_voxel_src,
+            "feats_voxel_dst": feats_voxel_dst,
+            "voxels_src": voxels_src,
             "voting_vol": voting_vols,
             "points_src_offset": point_offsets_src,
             "points_src_voxel_idx": point_voxel_idxs_src,

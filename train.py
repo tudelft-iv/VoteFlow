@@ -103,7 +103,7 @@ def main(cfg):
     callbacks = [
         ModelCheckpoint(
             dirpath=os.path.join(output_dir, "checkpoints"),
-            filename="{epoch:02d}_"+method_name,
+            filename="{epoch:02d}_{cfg.model.val_monitor:.2f}_"+method_name,
             auto_insert_metric_name=False,
             monitor=cfg.model.val_monitor,
             mode="min",

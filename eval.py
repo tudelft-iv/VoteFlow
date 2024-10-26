@@ -55,7 +55,7 @@ def main(cfg):
                                name=f"{cfg.output}",
                                offline=(cfg.wandb_mode == "offline"))
     
-    trainer = pl.Trainer(logger=wandb_logger, devices=1)
+    trainer = pl.Trainer(logger=wandb_logger, devices=cfg.gpus)
     # NOTE(Qingwen): search & check: def eval_only_step_(self, batch, res_dict)
     print(cfg.dataset_path)
     trainer.validate(model = mymodel, 
