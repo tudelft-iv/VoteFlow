@@ -35,3 +35,6 @@ cancel.sh
 *.egg-info
 build*
 dist*
+
+.DS_Store
+._.DS_Store
