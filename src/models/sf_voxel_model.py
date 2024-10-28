@@ -12,7 +12,7 @@ from .basic.decoder import LinearDecoder
 from .basic import cal_pose0to1
 
 from .ht.ht_cuda import HT_CUDA
-from .model_utils.util_model import Backbone, VolConv, Decoder, FastFlowUNet, SimpleDecoder
+from .model_utils.util_model import Backbone, VolConv, VolConvBN, Decoder, FastFlowUNet, SimpleDecoder
 from .model_utils.util_func import float_division, tensor_mem_size, calculate_unq_voxels, batched_masked_gather, pad_to_batch
 
 import warnings
@@ -68,7 +68,7 @@ class SFVoxelModel(nn.Module):
         #self.backbone = Backbone(input_channels, output_channels)
         self.backbone = FastFlowUNet(input_channels, output_channels) ## output_channel 64
         self.vote = HT_CUDA(self.ny, self.nx, self.nz)
-        self.volconv = VolConv(self.ny, self.nx, hidden_dim=128, dim_output=output_channels)
+        self.volconv = VolConvBN(self.ny, self.nx, hidden_dim=16, dim_output=output_channels)
         
         if self.only_use_vol_feats:
             self.decoder = SimpleDecoder(dim_input=output_channels, dim_output=3)

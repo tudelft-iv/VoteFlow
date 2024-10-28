@@ -8,9 +8,22 @@ class ConvBlock(nn.Module):
                  kernel_size=3, stride=1, padding=1):
         super().__init__()
         self.conv = nn.Conv2d(in_num_channels, out_num_channels, kernel_size, stride, padding, bias=True)
-
+        
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.conv(x)
+        x = F.relu(x)
+        return x
+
+class ConvBNBlock(nn.Module):
+    def __init__(self, in_num_channels: int, out_num_channels: int,
+                 kernel_size=3, stride=1, padding=1):
+        super().__init__()
+        self.conv = nn.Conv2d(in_num_channels, out_num_channels, kernel_size, stride, padding, bias=True)
+        self.bn = nn.BatchNorm2d(out_num_channels)
+        
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = self.conv(x)
+        x = self.bn(x)
         x = F.relu(x)
         return x
 
@@ -37,6 +50,7 @@ class VolConv(nn.Module):
         self.conv2 = ConvBlock(in_num_channels=hidden_dim, out_num_channels=hidden_dim)
         self.maxpool = nn.MaxPool2d(2)
         self.linear = nn.Linear((h//4) * (w//4) * hidden_dim, dim_output)
+        self.batchnorm = nn.BatchNorm1d(dim_output)
         self.relu = nn.ReLU()
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -46,6 +60,27 @@ class VolConv(nn.Module):
         x = self.conv2(x)
         x = self.maxpool(x)
         x = self.linear(x.view(b*l, -1))
+        x = self.batchnorm(x)
+        x = self.relu(x)
+        return x.view(b, l, -1)
+
+class VolConvBN(nn.Module):
+    def __init__(self, h, w, hidden_dim=16, dim_output=64):
+        super().__init__()
+        assert h%2==0
+        assert w%2==0
+        self.conv1 = ConvBNBlock(in_num_channels=1, out_num_channels=hidden_dim, stride=2)
+        self.conv2 = ConvBNBlock(in_num_channels=hidden_dim, out_num_channels=hidden_dim, stride=2)
+        self.linear = nn.Linear((h//4) * (w//4) * hidden_dim, dim_output)
+        self.relu = nn.ReLU()
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        b, l, h, w = x.shape
+        x = self.conv1(x.view(b*l, 1, h, w))
+        x = self.conv2(x)
+        print(x.shape)
+        x = self.linear(x.view(b*l, -1))
+        print('after linear:', x.shape)
         x = self.relu(x)
         return x.view(b, l, -1)
 
