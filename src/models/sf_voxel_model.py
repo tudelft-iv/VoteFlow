@@ -30,6 +30,7 @@ class SFVoxelModel(nn.Module):
                  voxel_size=(0.2, 0.2, 6),
                  grid_feature_size = [512, 512],
                  only_use_vol_feats=False,
+                 use_bn_in_vol=False,
                  **kwargs):
         super().__init__()
         
@@ -68,7 +69,10 @@ class SFVoxelModel(nn.Module):
         #self.backbone = Backbone(input_channels, output_channels)
         self.backbone = FastFlowUNet(input_channels, output_channels) ## output_channel 64
         self.vote = HT_CUDA(self.ny, self.nx, self.nz)
-        self.volconv = VolConvBN(self.ny, self.nx, hidden_dim=16, dim_output=output_channels)
+        if use_bn_in_vol:
+            self.volconv = VolConvBN(self.ny, self.nx, hidden_dim=16, dim_output=output_channels)
+        else:
+            self.volconv = VolConv(self.ny, self.nx, hidden_dim=16, dim_output=output_channels)
         
         if self.only_use_vol_feats:
             self.decoder = SimpleDecoder(dim_input=output_channels, dim_output=3)
