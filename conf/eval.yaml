@@ -6,6 +6,7 @@ save_res: False # [True, False]
 
 leaderboard_version: 1 # [1, 2]
 supervised_flag: True # [True, False], whether you use any label from the dataset
+with_trainval: False # [True, False], whether you use the trainval for eval
 
 # no need to change
 slurm_id: 00000

@@ -42,9 +42,11 @@ def main(cfg):
     checkpoint_params = DictConfig(torch_load_ckpt["hyper_parameters"])
     
     print(checkpoint_params.keys())
-    print(checkpoint_params.cfg.exp_id)
+
+    exp_id = checkpoint_params.cfg.get('exp_id', cfg.model.name)
+    print(exp_id)
     
-    cfg.output = checkpoint_params.cfg.exp_id + f"-e{torch_load_ckpt['epoch']}-{cfg.av2_mode}-v{cfg.leaderboard_version}"
+    cfg.output = exp_id + f"-e{torch_load_ckpt['epoch']}-{cfg.av2_mode}-v{cfg.leaderboard_version}"
     cfg.model.update(checkpoint_params.cfg.model)
     
     mymodel = ModelWrapper.load_from_checkpoint(cfg.checkpoint, cfg=cfg, eval=True)
@@ -55,7 +57,7 @@ def main(cfg):
                                name=f"{cfg.output}",
                                offline=(cfg.wandb_mode == "offline"))
     
-    trainer = pl.Trainer(logger=wandb_logger, devices=cfg.gpus)
+    trainer = pl.Trainer(logger=wandb_logger, devices=1)
     # NOTE(Qingwen): search & check: def eval_only_step_(self, batch, res_dict)
     
 
@@ -73,25 +75,26 @@ def main(cfg):
     eval_loader = DataLoader(
         HDF5Dataset(cfg.dataset_path + f"/{cfg.av2_mode}", 
                 n_frames=checkpoint_params.cfg.num_frames  if 'num_frames' in checkpoint_params.cfg else 2,
-                eval=True),
+                eval=True,
+                leaderboard_version=cfg.leaderboard_version),
         batch_size=1,
         # collate_fn=collate_fn_pad,
-        pin_memory=True,
+        # pin_memory=True,
         shuffle=False)
         
         
     print(f"---LOG[eval]: Start evaluation on {cfg.dataset_path}/{cfg.av2_mode}.")
-    print(f"---LOG[eval]: Lenth of the eval data: {len(eval_loader)}, val data: {len(val_loader)}.")
+    print(f"---LOG[eval]: Lenth of the eval data: {len(eval_loader)}, trainval data: {len(val_loader)}, with_trainval: {cfg.with_trainval}.")
     
     print(f"---LOG[eval]: Eval on {mymodel.av2_mode}.")
-    trainer.validate(model = mymodel, 
-                    dataloaders = eval_loader)
+    trainer.validate(model = mymodel, dataloaders = eval_loader)
     
-    mymodel.av2_mode = 'trainval'
-    print("###"*20)
-    print(f"---LOG[eval]: Eval on {mymodel.av2_mode}.")
-    trainer.validate(model = mymodel, 
-                    dataloaders = val_loader)
+    if cfg.with_trainval:
+        mymodel.av2_mode = 'trainval'
+        print("###"*20)
+        print(f"---LOG[eval]: Eval on {mymodel.av2_mode}.")
+        trainer.validate(model = mymodel, 
+                        dataloaders = val_loader)
     wandb.finish()
 
 if __name__ == "__main__":

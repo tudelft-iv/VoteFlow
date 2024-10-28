@@ -95,12 +95,12 @@ class DeFlow(nn.Module):
         self.timer[2].stop()
 
         self.timer[3].start("Decoder")
-        print('Deflow backbone is called.')
+        # print('Deflow backbone is called.')
         flows = self.head(
             torch.cat((pc0_before_pseudoimages, pc1_before_pseudoimages),
                     dim=1), grid_flow_pseudoimage, pc0_voxel_infos_lst)
         self.timer[3].stop()
-        print('Deflow head is called.')
+        # print('Deflow head is called.')
         # print("flows shape: ", len(flows), flows[0].shape) 
         pc0_points_lst = [e["points"] for e in pc0_voxel_infos_lst]
         pc1_points_lst = [e["points"] for e in pc1_voxel_infos_lst]
