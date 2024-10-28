@@ -76,9 +76,9 @@ class VolConvBN(nn.Module):
         b, l, h, w = x.shape
         x = self.conv1(x.view(b*l, 1, h, w))
         x = self.conv2(x)
-        print(x.shape)
+        # print(x.shape)
         x = self.linear(x.view(b*l, -1))
-        print('after linear:', x.shape)
+        # print('after linear:', x.shape)
         x = self.relu(x)
         return x.view(b, l, -1)
 
