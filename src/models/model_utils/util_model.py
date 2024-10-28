@@ -50,7 +50,6 @@ class VolConv(nn.Module):
         self.conv2 = ConvBlock(in_num_channels=hidden_dim, out_num_channels=hidden_dim)
         self.maxpool = nn.MaxPool2d(2)
         self.linear = nn.Linear((h//4) * (w//4) * hidden_dim, dim_output)
-        self.batchnorm = nn.BatchNorm1d(dim_output)
         self.relu = nn.ReLU()
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -60,7 +59,6 @@ class VolConv(nn.Module):
         x = self.conv2(x)
         x = self.maxpool(x)
         x = self.linear(x.view(b*l, -1))
-        x = self.batchnorm(x)
         x = self.relu(x)
         return x.view(b, l, -1)
 
