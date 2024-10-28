@@ -27,7 +27,7 @@ class SFVoxelModel(nn.Module):
                  input_channels=32,
                  output_channels=64, 
                  point_cloud_range = [-51.2, -51.2, -3, 51.2, 51.2, 3], 
-                 voxel_size=(0.2, 0.2, 0.2),
+                 voxel_size=(0.2, 0.2, 6),
                  grid_feature_size = [512, 512],
                  only_use_vol_feats=False,
                  **kwargs):
@@ -40,9 +40,9 @@ class SFVoxelModel(nn.Module):
         assert voxel_size[0]==voxel_size[1]
 
         # how many bins inside a voxel after quantization
-        # assume 120km/h, along x/y; 0.1m along z
-        nx = math.ceil(3.3*nframes / voxel_size[0])  
-        ny = math.ceil(3.3*nframes / voxel_size[1]) 
+        # assume 72km/h (20/s), along x/y; 0.1m along z
+        nx = math.ceil(2*nframes / voxel_size[0])  
+        ny = math.ceil(2*nframes / voxel_size[1]) 
         nz = math.ceil(0.1 / voxel_size[2])  # +/-0.1
 
         self.nx = nx*2 # +/-x
@@ -68,7 +68,7 @@ class SFVoxelModel(nn.Module):
         #self.backbone = Backbone(input_channels, output_channels)
         self.backbone = FastFlowUNet(input_channels, output_channels) ## output_channel 64
         self.vote = HT_CUDA(self.ny, self.nx, self.nz)
-        self.volconv = VolConv(self.ny, self.nx, self.nz, dim_output=output_channels)
+        self.volconv = VolConv(self.ny, self.nx, hidden_dim=128, dim_output=output_channels)
         
         if self.only_use_vol_feats:
             self.decoder = SimpleDecoder(dim_input=output_channels, dim_output=3)

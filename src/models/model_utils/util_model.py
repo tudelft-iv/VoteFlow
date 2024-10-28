@@ -29,14 +29,14 @@ class Backbone(nn.Module):
 
 
 class VolConv(nn.Module):
-    def __init__(self, h, w, d, dim_output):
+    def __init__(self, h, w, hidden_dim=16, dim_output=64):
         super().__init__()
         assert h%2==0
         assert w%2==0
-        self.conv1 = ConvBlock(in_num_channels=1, out_num_channels=16)
-        self.conv2 = ConvBlock(in_num_channels=16, out_num_channels=16)
+        self.conv1 = ConvBlock(in_num_channels=1, out_num_channels=hidden_dim)
+        self.conv2 = ConvBlock(in_num_channels=hidden_dim, out_num_channels=hidden_dim)
         self.maxpool = nn.MaxPool2d(2)
-        self.linear = nn.Linear((h//4) * (w//4) * 16, dim_output)
+        self.linear = nn.Linear((h//4) * (w//4) * hidden_dim, dim_output)
         self.relu = nn.ReLU()
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
