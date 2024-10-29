@@ -100,6 +100,7 @@ def main(cfg):
     cfg = DictConfig(OmegaConf.to_container(cfg, resolve=True))
     model = ModelWrapper(cfg)
 
+    print(f"Model: {model}")
     callbacks = [
         ModelCheckpoint(
             dirpath=os.path.join(output_dir, "checkpoints"),

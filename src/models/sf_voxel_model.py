@@ -31,6 +31,7 @@ class SFVoxelModel(nn.Module):
                  grid_feature_size = [512, 512],
                  only_use_vol_feats=False,
                  use_bn_in_vol=False,
+                 vol_conv_hidden_dim=16,
                  **kwargs):
         super().__init__()
         
@@ -70,9 +71,9 @@ class SFVoxelModel(nn.Module):
         self.backbone = FastFlowUNet(input_channels, output_channels) ## output_channel 64
         self.vote = HT_CUDA(self.ny, self.nx, self.nz)
         if use_bn_in_vol:
-            self.volconv = VolConvBN(self.ny, self.nx, hidden_dim=16, dim_output=output_channels)
+            self.volconv = VolConvBN(self.ny, self.nx, hidden_dim=vol_conv_hidden_dim, dim_output=output_channels)
         else:
-            self.volconv = VolConv(self.ny, self.nx, hidden_dim=16, dim_output=output_channels)
+            self.volconv = VolConv(self.ny, self.nx, hidden_dim=vol_conv_hidden_dim, dim_output=output_channels)
         
         if self.only_use_vol_feats:
             self.decoder = SimpleDecoder(dim_input=output_channels, dim_output=3)
@@ -87,7 +88,7 @@ class SFVoxelModel(nn.Module):
         
         self.timer = dztimer.Timing()
         self.timer.start("Total")
-
+        
     def process_points_per_pair(self, voxel_info_src, voxel_info_dst):
         valid_point_idxs_src = voxel_info_src['point_idxes'] # [N_valid_pts]
         valid_point_idxs_dst = voxel_info_dst['point_idxes']
