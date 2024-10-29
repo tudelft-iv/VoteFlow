@@ -174,7 +174,7 @@ class ModelWrapper(LightningModule):
     def configure_optimizers(self):
         
         optimizer = optim.Adam(self.model.parameters(), lr=self.lr)
-        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=self.trainer.max_epochs//4, gamma=0.5)
+        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=self.trainer.max_epochs//2, gamma=0.1)
 
         return {'optimizer': optimizer, 
                 'lr_scheduler': scheduler}
