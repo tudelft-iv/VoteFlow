@@ -42,7 +42,7 @@ class SFVoxelModel(nn.Module):
         assert voxel_size[0]==voxel_size[1]
 
         # how many bins inside a voxel after quantization
-        # assume 72km/h (20/s), along x/y; 0.1m along z
+        # assume 72km/h (20m/s), along x/y; 0.1m along z
         nx = math.ceil(2*nframes / voxel_size[0])  
         ny = math.ceil(2*nframes / voxel_size[1]) 
         nz = math.ceil(0.1 / voxel_size[2])  # +/-0.1
@@ -60,7 +60,7 @@ class SFVoxelModel(nn.Module):
         self.m = m # m knn within src, for each src point
         self.radius_src = math.ceil(max(2.0/voxel_size[0], 2.0/voxel_size[1])) # define a search window (in meters) within src voxels, aka the rigid motion window
         self.n = n # n knn between src and dst, for each src voxel
-        self.radius_dst = max(self.nx, self.ny) # define a search window for a src voxel in dst voxels for calculating translations
+        self.radius_dst = max(nx, ny) # define a search window for a src voxel in dst voxels for calculating translations
         print('radius: ', self.radius_src, self.radius_dst)
 
         self.point_cloud_range = point_cloud_range
@@ -263,7 +263,7 @@ class SFVoxelModel(nn.Module):
         # print('math1:', (feats_voxel_src[:, :, None, :] * feats_voxel_dst_inflate).shape)
         # corr_src_dst = (feats_voxel_src[:, :, None, :] * feats_voxel_dst_inflate).sum(dim=-1) # [b, l, self.n]
         corr_src_dst = torch.nn.functional.cosine_similarity(feats_voxel_src[:, :, None, :], feats_voxel_dst_inflate, dim=-1)
-        # print('corr_src_dst:', corr_src_dst.shape)
+        # print('corr_src_dst:', corr_src_dst.shape, corr_src_dst.max(), corr_src_dst.min())
         corr_inflate = batched_masked_gather(corr_src_dst, knn_idxs_src.long(), knn_idxs_src>=0, fill_value=0)
         # print('corr_inflate:', corr_inflate.shape, corr_inflate.max(), corr_inflate.min())  
         self.timer[1][3].stop()
@@ -271,7 +271,7 @@ class SFVoxelModel(nn.Module):
         self.timer[1][4].start("Voting")
         
         voting_vols= self.vote(corr_inflate, voxels_src, voxels_dst, knn_idxs_src, knn_idxs_dst) 
-        # print('voting  vols:', vols.shape, vols[0].max(), vols[0].min()) 
+        # print('voting  vols:', voting_vols.shape, voting_vols[0].max(0), voting_vols[0].min(0)) 
         
         # vols_flattened = vols.view(vols.shape[0], vols.shape[1], -1)
         
