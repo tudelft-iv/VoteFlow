@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from typing import List, Tuple, Dict
-
+import math
 class ConvBlock(nn.Module):
     def __init__(self, in_num_channels: int, out_num_channels: int,
                  kernel_size=3, stride=1, padding=1):
@@ -69,9 +69,9 @@ class VolConvBN(nn.Module):
         assert w%2==0
         self.conv1 = ConvBNBlock(in_num_channels=1, out_num_channels=hidden_dim, stride=2)
         self.conv2 = ConvBNBlock(in_num_channels=hidden_dim, out_num_channels=hidden_dim, stride=2)
-        self.linear = nn.Linear((h//4) * (w//4) * hidden_dim, dim_output)
+        self.linear = nn.Linear(math.ceil(h/4) * math.ceil(w/4) * hidden_dim, dim_output)
         self.relu = nn.ReLU()
-
+    
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         b, l, h, w = x.shape
         x = self.conv1(x.view(b*l, 1, h, w))
