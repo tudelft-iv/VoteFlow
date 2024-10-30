@@ -86,11 +86,11 @@ class Decoder(nn.Module):
     def __init__(self, dim_input=16, dim_output=3, layer_size=1):
         super().__init__()
         # self.linear = nn.Linear(m*dim_input, dim_output)
-        self.offset_encoder = nn.Linear(3, dim_input)
+        self.offset_encoder = nn.Linear(3, 128)
         
         filter_size=128
         decoder = nn.ModuleList()
-        decoder.append(torch.nn.Linear(dim_input * 2, filter_size))
+        decoder.append(torch.nn.Linear(dim_input +128, filter_size))
         decoder.append(torch.nn.GELU())
         for _ in range(layer_size-1):
             decoder.append(torch.nn.Linear(filter_size, filter_size))

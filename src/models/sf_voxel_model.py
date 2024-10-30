@@ -58,10 +58,10 @@ class SFVoxelModel(nn.Module):
     
         self.nframes = nframes
         self.m = m # m knn within src, for each src point
-        self.radius_src = math.ceil(max(2.0/voxel_size[0], 2.0/voxel_size[1])) # define a search window (in meters) within src voxels, aka the rigid motion window
+        # self.radius_src = math.ceil(max(2.0/voxel_size[0], 2.0/voxel_size[1])) # define a search window (in meters) within src voxels, aka the rigid motion window
         self.n = n # n knn between src and dst, for each src voxel
         self.radius_dst = max(nx, ny) # define a search window for a src voxel in dst voxels for calculating translations
-        print('radius: ', self.radius_src, self.radius_dst)
+        print('search window radius in target pc:', self.radius_dst)
 
         self.point_cloud_range = point_cloud_range
         self.voxel_size = voxel_size
@@ -113,8 +113,8 @@ class SFVoxelModel(nn.Module):
         # point_voxel_idxs_src # [N_valid_pts], the index of the unique voxel for each point    
         
         dists_dst, knn_idxs_dst, _ = pytorch3d_ops.ball_query(unq_voxel_coords_src[None].float(), unq_voxel_coords_dst[None].float(), lengths1=None, lengths2=None, K=self.n, return_nn=False, radius=self.radius_dst)
-        dists_src, knn_idxs_src, _ = pytorch3d_ops.ball_query(unq_voxel_coords_src[None].float(), unq_voxel_coords_src[None].float(), lengths1=None, lengths2=None, K=self.m, return_nn=False, radius=self.radius_src)
-        
+        # dists_src, knn_idxs_src, _ = pytorch3d_ops.ball_query(unq_voxel_coords_src[None].float(), unq_voxel_coords_src[None].float(), lengths1=None, lengths2=None, K=self.m, return_nn=False, radius=self.radius_src)
+        dists_src, knn_idxs_src, _ = pytorch3d_ops.knn_points(unq_voxel_coords_src[None].float(), unq_voxel_coords_src[None].float(), lengths1=None, lengths2=None, K=self.m, return_nn=False, return_sorted=False)
         # print('unq_voxel_coords_src:', unq_voxel_coords_src.shape) # [N_valid_voxels, 2]
         # print('knn_idxs_dst:', knn_idxs_dst.shape) # [1, N_valid_voxels, n], n=64,  the index of n nerest voxels in dst for each voxel in src
         # print('knn_idxs_src:', knn_idxs_src.shape) # [1, N_valid_voxels, m], m=8, the index of n nerest voxels in src for each voxel in src
@@ -202,14 +202,14 @@ class SFVoxelModel(nn.Module):
         
         b, c, h, w = image.shape
         
-        feats_per_voxel = batched_masked_gather(image.view(b, c, h*w).permute(0, 2, 1), idxs[:, :, None].long(), mask[:, :, None], fill_value=-1)
+        feats_per_voxel = batched_masked_gather(image.view(b, c, h*w).permute(0, 2, 1), idxs[:, :, None].long(), mask[:, :, None], fill_value=0)
         
         # print('point per voxel: ', feats_per_voxel.shape)
         return feats_per_voxel[:, :, 0, :] # [b, num , c]
 
     def extract_point_from_voxel(self, voxels, idxs):
         # voxels: [b, l, c]; idxs: [b, num]
-        feats_per_point = batched_masked_gather(voxels, idxs[:,:,None].long(), idxs[:, :, None]>=0, fill_value=-1)
+        feats_per_point = batched_masked_gather(voxels, idxs[:,:,None].long(), idxs[:, :, None]>=0, fill_value=0)
         # print('point per point: ', feats_per_point.shape)
         return feats_per_point[:, :, 0, :]# [b, num, c]
 
@@ -263,15 +263,26 @@ class SFVoxelModel(nn.Module):
         # print('math1:', (feats_voxel_src[:, :, None, :] * feats_voxel_dst_inflate).shape)
         # corr_src_dst = (feats_voxel_src[:, :, None, :] * feats_voxel_dst_inflate).sum(dim=-1) # [b, l, self.n]
         corr_src_dst = torch.nn.functional.cosine_similarity(feats_voxel_src[:, :, None, :], feats_voxel_dst_inflate, dim=-1)
-        # print('corr_src_dst:', corr_src_dst.shape, corr_src_dst.max(), corr_src_dst.min())
-        corr_inflate = batched_masked_gather(corr_src_dst, knn_idxs_src.long(), knn_idxs_src>=0, fill_value=0)
+        # print('corr_src_dst:', corr_src_dst.shape, corr_src_dst.max(-1)[0].shape, corr_src_dst.min(-1)[0].shape) # (bs, num_voxels, n)
+        # print(corr_src_dst.max(-1)[0])
+        # print(corr_src_dst.min(-1)[0])
+        corr_inflate = batched_masked_gather(corr_src_dst, knn_idxs_src.long(), knn_idxs_src>=0, fill_value=0) #(bs, num_voxels, m. n)
         # print('corr_inflate:', corr_inflate.shape, corr_inflate.max(), corr_inflate.min())  
         self.timer[1][3].stop()
         
         self.timer[1][4].start("Voting")
         
         voting_vols= self.vote(corr_inflate, voxels_src, voxels_dst, knn_idxs_src, knn_idxs_dst) 
-        # print('voting  vols:', voting_vols.shape, voting_vols[0].max(0), voting_vols[0].min(0)) 
+        # print('voting  vols:', voting_vols.shape, voting_vols[0].max(-1)[0].shape, voting_vols[0].min(-1)[0].shape) 
+        
+        # voting_vols_flatten = voting_vols.flatten(start_dim=-2)
+        # voting_vols_max = voting_vols_flatten.max(-1)[0]
+        # voting_vols_min = voting_vols_flatten.min(-1)[0]
+        # print('voting  vols flatten:', voting_vols_flatten.shape, voting_vols_max.shape, voting_vols_min.shape) 
+        
+        # voting_vols_norm = (voting_vols - voting_vols_min[..., None, None] )/ (voting_vols_max[..., None, None] - voting_vols_min[..., None, None] + 1e-6)
+        
+        # print(voting_vols_norm.shape, voting_vols_norm.max(), voting_vols_norm.min())
         
         # vols_flattened = vols.view(vols.shape[0], vols.shape[1], -1)
         
@@ -288,9 +299,6 @@ class SFVoxelModel(nn.Module):
         #     print('topk voting values:', topk_voting[:10, :])
             
         #     norm_topk_voting = topk_voting
-            
-            
-            
         
         vols = self.volconv(voting_vols)
         # print('voting  vols after volconv:', voting_vols.shape, vols.shape, vols.max(), vols.min())
