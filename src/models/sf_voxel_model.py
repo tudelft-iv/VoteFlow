@@ -12,7 +12,7 @@ from .basic.decoder import LinearDecoder
 from .basic import cal_pose0to1
 
 from .ht.ht_cuda import HT_CUDA
-from .model_utils.util_model import Backbone, VolConv, VolConvBN, Decoder, FastFlowUNet, SimpleDecoder
+from .model_utils.util_model import Backbone, VolConv, VolConvBN, Decoder, FastFlowUNet, SimpleDecoder, GRUDecoder
 from .model_utils.util_func import float_division, tensor_mem_size, calculate_unq_voxels, batched_masked_gather, pad_to_batch
 
 import warnings
@@ -29,7 +29,7 @@ class SFVoxelModel(nn.Module):
                  point_cloud_range = [-51.2, -51.2, -3, 51.2, 51.2, 3], 
                  voxel_size=(0.2, 0.2, 6),
                  grid_feature_size = [512, 512],
-                 only_use_vol_feats=False,
+                 decoder='decoder',
                  use_bn_in_vol=False,
                  vol_conv_hidden_dim=16,
                  **kwargs):
@@ -46,13 +46,11 @@ class SFVoxelModel(nn.Module):
         nx = math.ceil((2+1e-8)*nframes / voxel_size[0])  
         ny = math.ceil((2+1e-8)*nframes / voxel_size[1]) 
         nz = math.ceil((0.1+1e-8) / voxel_size[2])  # +/-0.1
-
+        
         self.nx = nx*2 # +/-x
         self.ny = ny*2 # +/-y
         self.nz = nz*2 # +/-z
         print('n x/y/z: ', self.nx, self.ny, self.nz)
-
-        self.only_use_vol_feats = only_use_vol_feats
                 
         pseudo_image_dims = grid_feature_size[:2] #int((point_cloud_range[3]-point_cloud_range[0])/voxel_size[0]), int((point_cloud_range[4]-point_cloud_range[1])/voxel_size[1])) # ignore z dimension
     
@@ -60,8 +58,10 @@ class SFVoxelModel(nn.Module):
         self.m = m # m knn within src, for each src point
         # self.radius_src = math.ceil(max(2.0/voxel_size[0], 2.0/voxel_size[1])) # define a search window (in meters) within src voxels, aka the rigid motion window
         self.n = n # n knn between src and dst, for each src voxel
+        self.decoder = decoder
         self.radius_dst = max(nx, ny) # define a search window for a src voxel in dst voxels for calculating translations
         print('search window radius in target pc:', self.radius_dst)
+        print(f'using decoder: {self.decoder}')
 
         self.point_cloud_range = point_cloud_range
         self.voxel_size = voxel_size
@@ -70,16 +70,23 @@ class SFVoxelModel(nn.Module):
         #self.backbone = Backbone(input_channels, output_channels)
         self.backbone = FastFlowUNet(input_channels, output_channels) ## output_channel 64
         self.vote = HT_CUDA(self.ny, self.nx, self.nz)
+        
         if use_bn_in_vol:
             self.volconv = VolConvBN(self.ny, self.nx, hidden_dim=vol_conv_hidden_dim, dim_output=output_channels)
         else:
             self.volconv = VolConv(self.ny, self.nx, hidden_dim=vol_conv_hidden_dim, dim_output=output_channels)
         
-        if self.only_use_vol_feats:
+        if self.decoder == 'simple_decoder':
             self.decoder = SimpleDecoder(dim_input=output_channels, dim_output=3)
-            print(self.decoder)
-        else:
+            print('simple decoder:', self.decoder)
+        elif self.decoder == 'gru_decoder':
+            self.decoder = GRUDecoder(pseudoimage_channels=output_channels)
+            print('gru decoder:', self.decoder)
+        elif self.decoder == 'decoder':
             self.decoder = Decoder(dim_input= output_channels * 2 + input_channels*2 , dim_output=3)
+            print('decoder:', self.decoder)
+        else:
+            raise NotImplementedError(f"decoder {self.decoder} not implemented")
         
         self.embedder = DynamicEmbedder(voxel_size=voxel_size,
                                 pseudo_image_dims=pseudo_image_dims,
@@ -313,7 +320,7 @@ class SFVoxelModel(nn.Module):
         # print('feats_point_src_init:', feats_point_src_init.shape, feats_point_src_init.max(), feats_point_src_init.min())
         # print('feats_point_src_grid:', feats_point_src_grid.shape, feats_point_src_grid.max(), feats_point_src_grid.min())
         
-        if self.only_use_vol_feats:
+        if self.decoder=='simple_decoder':
             flows = self.decoder(feats_point_vol)
         else: 
             feats_cat = self.concat_feats(feats_point_vol, feats_point_src_init, feats_point_src_grid)

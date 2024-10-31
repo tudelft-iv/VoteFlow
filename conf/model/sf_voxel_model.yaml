@@ -9,7 +9,7 @@ target:
   n: 64
   input_channels: 32
   output_channels: 64
-  only_use_vol_feats: False
+  decoder: 'decoder'
   use_bn_in_vol: False
   vol_conv_hidden_dim: 16
 
