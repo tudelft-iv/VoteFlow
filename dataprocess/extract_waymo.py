@@ -18,7 +18,7 @@ import os
 os.environ["OMP_NUM_THREADS"] = "1"
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 # NOTE(2023/02/29): it's really important to set this! otherwise, the point cloud will be wrong. really wried.
-os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "4,5"
 
 import multiprocessing
 from multiprocessing import Pool, current_process
@@ -342,7 +342,7 @@ def process_log(data_dir: Path, log, log_map_folder, output_dir: Path, n = None)
             group.create_dataset('flow_category_indices', data=flow_category.astype(np.int8))
     
     raster_heightmap, transform_se2, transform_scale = load_ground_height_raster(log_map_folder.parent / log_map_folder.stem)
-    all_data = list(tf.data.TFRecordDataset(data_dir / log, compression_type='').as_numpy_iterator())
+    all_data = list(tf.data.TFRecordDataset(str(data_dir / log), compression_type='').as_numpy_iterator())
     first_frame = dataset_pb2.Frame.FromString(bytearray(all_data[0]))
     scene_id = first_frame.context.name
     total_lens = len(all_data)
@@ -423,5 +423,8 @@ def main(
 
 if __name__ == '__main__':
     start_time = time.time()
+    physical_devices = tf.config.list_physical_devices('GPU') 
+    for device in physical_devices:
+        tf.config.experimental.set_memory_growth(device, True)
     fire.Fire(main)
     print(f"\nTime used: {(time.time() - start_time)/60:.2f} mins")

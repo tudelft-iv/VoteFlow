@@ -30,17 +30,20 @@ class ConvBNBlock(nn.Module):
 class ConvGRU(nn.Module):
     def __init__(self, input_dim=64, hidden_dim=128):
         super(ConvGRU, self).__init__()
-        self.convz = nn.Conv1d(input_dim+hidden_dim, hidden_dim, 1)
-        self.convr = nn.Conv1d(input_dim+hidden_dim, hidden_dim, 1)
-        self.convq = nn.Conv1d(input_dim+hidden_dim, hidden_dim, 1)
+        self.convz = nn.Linear(input_dim+hidden_dim, hidden_dim)
+        self.convr = nn.Linear(input_dim+hidden_dim, hidden_dim)
+        self.convq = nn.Linear(input_dim+hidden_dim, hidden_dim)
 
+        self.sigmoid = nn.Sigmoid()
+        self.tanh = nn.Tanh()
     def forward(self, h, x):
-        hx = torch.cat([h, x], dim=1)
+        hx = torch.cat([h, x], dim=-1)
 
-        z = torch.sigmoid(self.convz(hx))
-        r = torch.sigmoid(self.convr(hx))
-        rh_x = torch.cat([r*h, x], dim=1)
-        q = torch.tanh(self.convq(rh_x))
+        z = self.sigmoid(self.convz(hx))
+        r = self.sigmoid(self.convr(hx))
+        rh_x = torch.cat([r*h, x], dim=-1)
+        print('In ConvGRU:', rh_x.shape)
+        q = self.tanh(self.convq(rh_x))
 
         h = (1 - z) * h + z * q
         return h
@@ -134,37 +137,51 @@ class GRUDecoder(nn.Module):
         self.offset_encoder = nn.Linear(3, pseudoimage_channels)
     
         self.gru = ConvGRU(input_dim=pseudoimage_channels, hidden_dim=pseudoimage_channels*3)
-        
+        #self.conv1d = nn.Conv1d(pseudoimage_channels*3, pseudoimage_channels*3, 1)
+        # self.linear = nn.Linear(pseudoimage_channels*3, pseudoimage_channels*3)
         self.decoder = nn.Sequential(
             nn.Linear(pseudoimage_channels*4, pseudoimage_channels//2), nn.GELU(),
             nn.Linear(pseudoimage_channels//2, 3))
         self.num_iters = num_iters
-    def forward_single(self, 
-                       feats,
-                        pts_offsets: torch.Tensor) -> torch.Tensor:
+    # def forward_single(self, 
+    #                    feats,
+    #                    pts_offsets: torch.Tensor) -> torch.Tensor:
         
-        pts_offsets_feats = self.offset_encoder(pts_offsets) ## [N, 128]
-        concatenated_vectors = feats.unsqueeze(2)
+    #     pts_offsets_feats = self.offset_encoder(pts_offsets) ## [N, 128]
 
-        # print(' In GRU decoder: before called gru')
-        for itr in range(self.num_iters):
-            concatenated_vectors = self.gru(concatenated_vectors, pts_offsets_feats.unsqueeze(2))
-        # print(' In GRU decoder: after called gru')
-        flow = self.decoder(torch.cat([concatenated_vectors.squeeze(2), pts_offsets_feats], dim=1))
-        # print(' In GRU decoder: after decoder')
-        return flow
+    #     print(' In GRU decoder: before called gru', feats.shape, pts_offsets_feats.shape)
+    #     concatenated_vectors = feats
+    #     for itr in range(self.num_iters):
+    #         print(' In GRU decoder: before called gru', concatenated_vectors.shape, concatenated_vectors.max(), concatenated_vectors.min())
+    #         concatenated_vectors = self.gru(concatenated_vectors, pts_offsets_feats)
+    #         print(' In GRU decoder: after called gru', concatenated_vectors.shape, concatenated_vectors.max(), concatenated_vectors.min())
+            
+    #     print(' In GRU decoder: after called gru', concatenated_vectors.shape, pts_offsets_feats.shape)
+    #     flow = self.decoder(torch.cat([concatenated_vectors, pts_offsets_feats], dim=1))
+    #     print(' In GRU decoder: after decoder')
+    #     return flow
     
     def forward(self,
                 feats_cat: torch.Tensor, 
                 pts_offsets: torch.Tensor) -> torch.Tensor:
         
-        flow_results = []
-        for pts_offset, feat_cat in zip(pts_offsets,feats_cat):
-            flow = self.forward_single(feat_cat, pts_offset)
-            flow_results.append(flow)
+        # flow_results = []
+        # for pts_offset, feat_cat in zip(pts_offsets,feats_cat):
+        #     flow = self.forward_single(feat_cat, pts_offset)
+        #     flow_results.append(flow)
         
-        return torch.stack(flow_results, dim=0)
+        pts_offsets_feats = self.offset_encoder(pts_offsets) ## [N, 128]
 
+        # print(' In GRU decoder: before called gru', feats_cat.shape, pts_offsets_feats.shape)
+        concatenated_vectors = feats_cat
+        for itr in range(self.num_iters):
+            # print(' In GRU decoder: before called gru', concatenated_vectors.shape, concatenated_vectors.max(), concatenated_vectors.min())
+            concatenated_vectors = self.gru(concatenated_vectors, pts_offsets_feats)
+            # print(' In GRU decoder: after called gru', concatenated_vectors.shape, concatenated_vectors.max(), concatenated_vectors.min())
+        # print(' In GRU decoder: after called gru', concatenated_vectors.shape, pts_offsets_feats.shape)
+        flow = self.decoder(torch.cat([concatenated_vectors, pts_offsets_feats], dim=-1))
+        
+        return flow
     
 class SimpleDecoder(nn.Module):
     def __init__(self, dim_input=16, dim_output=3, layer_size=1):
