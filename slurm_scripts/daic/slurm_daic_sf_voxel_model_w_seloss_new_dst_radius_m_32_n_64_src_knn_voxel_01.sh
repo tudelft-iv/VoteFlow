@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH --job-name="sf_voxel_model_with_seloss_new_dst_radius_m_16_n_128"
+#SBATCH --job-name="sf_voxel_model_with_seloss_new_dst_radius_m_32_n_64_src_knn_small_voxel"
 #SBATCH --partition=cor 
 #SBATCH --time=72:00:00
 
@@ -15,8 +15,8 @@
 #SBATCH --gpus-per-task=8
 
 #SBATCH --mail-type=END
-#SBATCH --output=slurm_logs/slurm_sf_voxel_model_with_seloss_new_dst_radius_m_16_n_128_%j.out
-#SBATCH --error=slurm_logs/slurm_sf_voxel_model_with_seloss_new_dst_radius_m_16_n_128_%j.err
+#SBATCH --output=slurm_logs/slurm_sf_voxel_model_with_seloss_new_dst_radius_m_32_n_64_src_knn_small_voxel_%j.out
+#SBATCH --error=slurm_logs/slurm_sf_voxel_model_with_seloss_new_dst_radius_m_32_n_64_src_knn_small_voxel_%j.err
 
 module load cuda/11.8
 module load devtoolset/11
@@ -32,6 +32,6 @@ previous=$(nvidia-smi --query-accounted-apps='gpu_utilization,mem_utilization,ma
 
 nvidia-smi
 
-srun python train.py model=sf_voxel_model lr=2e-4 epochs=20 batch_size=4 model.target.use_bn_in_vol=True model.target.m=16 model.target.n=128 loss_fn=seflowLoss exp_note="with_seflowLoss_new_dst_radius_m_16_n_128" wandb_mode="online" gpus="auto" "add_seloss={chamfer_dis: 1.0, static_flow_loss: 1.0, dynamic_chamfer_dis: 1.0, cluster_based_pc0pc1: 1.0}" "model.val_monitor=val/Dynamic/Mean"
+srun python train.py model=sf_voxel_model lr=2e-4 epochs=20 batch_size=2  "voxel_size=[0.1, 0.1, 6]" model.target.use_bn_in_vol=True model.target.m=32 model.target.n=64 loss_fn=seflowLoss exp_note="with_seflowLoss_new_dst_radius_m_32_n_64_voxel_01" wandb_mode="online" gpus="auto" "add_seloss={chamfer_dis: 1.0, static_flow_loss: 1.0, dynamic_chamfer_dis: 1.0, cluster_based_pc0pc1: 1.0}" "model.val_monitor=val/Dynamic/Mean"
 
 nvidia-smi --query-accounted-apps='gpu_utilization,mem_utilization,max_memory_usage,time' --format='csv' | /usr/bin/grep -v -F "$previous"
