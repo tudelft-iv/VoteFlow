@@ -43,9 +43,10 @@ class SFVoxelModel(nn.Module):
 
         # how many bins inside a voxel after quantization
         # assume 72km/h (20m/s), along x/y; 0.1m along z
-        nx = math.ceil((2+1e-8)*nframes / voxel_size[0])  
-        ny = math.ceil((2+1e-8)*nframes / voxel_size[1]) 
-        nz = math.ceil((0.1+1e-8) / voxel_size[2])  # +/-0.1
+        e = 1e-8
+        nx = math.ceil((2+e)*nframes / voxel_size[0])  
+        ny = math.ceil((2+e)*nframes / voxel_size[1]) 
+        nz = math.ceil((0.1+e) / voxel_size[2])  # +/-0.1
         
         self.nx = nx*2 # +/-x
         self.ny = ny*2 # +/-y
