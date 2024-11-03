@@ -31,6 +31,7 @@ class SFVoxelModel(nn.Module):
                  grid_feature_size = [512, 512],
                  decoder='decoder',
                  use_bn_in_vol=False,
+                 use_ball_query=False,
                  vol_conv_hidden_dim=16,
                  **kwargs):
         super().__init__()
@@ -57,13 +58,19 @@ class SFVoxelModel(nn.Module):
     
         self.nframes = nframes
         self.m = m # m knn within src, for each src point
-        # self.radius_src = math.ceil(max(2.0/voxel_size[0], 2.0/voxel_size[1])) # define a search window (in meters) within src voxels, aka the rigid motion window
+        self.using_ball_query = use_ball_query
+
         self.n = n # n knn between src and dst, for each src voxel
         self.decoder = decoder
         self.radius_dst = max(nx, ny) # define a search window for a src voxel in dst voxels for calculating translations
         print('search window radius in target pc:', self.radius_dst)
         print(f'using decoder: {self.decoder}')
 
+        if self.using_ball_query:
+            self.radius_src = math.ceil(max((2.0+e)/voxel_size[0], (2.0+e)/voxel_size[1])) # define a search window (in meters) within src voxels, aka the rigid motion window
+            print(f'using ball query, search window radius in source pc: {self.radius_src}, m={self.m}, n={self.n}')
+        else:
+            print(f'using knn, m={self.m}, n={self.n}')
         self.point_cloud_range = point_cloud_range
         self.voxel_size = voxel_size
         self.pseudo_image_dims = pseudo_image_dims
@@ -121,8 +128,10 @@ class SFVoxelModel(nn.Module):
         # point_voxel_idxs_src # [N_valid_pts], the index of the unique voxel for each point    
         
         dists_dst, knn_idxs_dst, _ = pytorch3d_ops.ball_query(unq_voxel_coords_src[None].float(), unq_voxel_coords_dst[None].float(), lengths1=None, lengths2=None, K=self.n, return_nn=False, radius=self.radius_dst)
-        # dists_src, knn_idxs_src, _ = pytorch3d_ops.ball_query(unq_voxel_coords_src[None].float(), unq_voxel_coords_src[None].float(), lengths1=None, lengths2=None, K=self.m, return_nn=False, radius=self.radius_src)
-        dists_src, knn_idxs_src, _ = pytorch3d_ops.knn_points(unq_voxel_coords_src[None].float(), unq_voxel_coords_src[None].float(), lengths1=None, lengths2=None, K=self.m, return_nn=False, return_sorted=False)
+        if self.using_ball_query:
+            dists_src, knn_idxs_src, _ = pytorch3d_ops.ball_query(unq_voxel_coords_src[None].float(), unq_voxel_coords_src[None].float(), lengths1=None, lengths2=None, K=self.m, return_nn=False, radius=self.radius_src)
+        else:
+            dists_src, knn_idxs_src, _ = pytorch3d_ops.knn_points(unq_voxel_coords_src[None].float(), unq_voxel_coords_src[None].float(), lengths1=None, lengths2=None, K=self.m, return_nn=False, return_sorted=False)
         # print('unq_voxel_coords_src:', unq_voxel_coords_src.shape) # [N_valid_voxels, 2]
         # print('knn_idxs_dst:', knn_idxs_dst.shape) # [1, N_valid_voxels, n], n=64,  the index of n nerest voxels in dst for each voxel in src
         # print('knn_idxs_src:', knn_idxs_src.shape) # [1, N_valid_voxels, m], m=8, the index of n nerest voxels in src for each voxel in src
