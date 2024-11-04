@@ -14,7 +14,7 @@ import torch
 from torch.utils.data import DataLoader
 import lightning.pytorch as pl
 from lightning.pytorch.loggers import WandbLogger
-from omegaconf import DictConfig
+from omegaconf import DictConfig, ListConfig
 import hydra, wandb, os, sys
 from hydra.core.hydra_config import HydraConfig
 from src.dataset import HDF5Dataset, collate_fn_pad
@@ -56,8 +56,14 @@ def main(cfg):
                                project=f"{cfg.wandb_project_name}", 
                                name=f"{cfg.output}",
                                offline=(cfg.wandb_mode == "offline"))
-    
-    trainer = pl.Trainer(logger=wandb_logger, devices=1)
+    print(type(cfg.gpus))
+    if isinstance(cfg.gpus, ListConfig):
+        assert len(cfg.gpus) == 1, "Only support single GPU for evaluation."
+    else:
+        cfg.gpus = 1 
+        
+    print(cfg.gpus)
+    trainer = pl.Trainer(logger=wandb_logger, devices=cfg.gpus)
     # NOTE(Qingwen): search & check: def eval_only_step_(self, batch, res_dict)
     
 
