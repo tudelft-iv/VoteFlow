@@ -12,7 +12,7 @@ target:
   grid_feature_size: [512, 512]
   decoder: 'decoder'
   use_bn_in_vol: False
-  use_ball_query: False,
+  use_ball_query: False
   vol_conv_hidden_dim: 16
 
 val_monitor: val/Dynamic/Mean
