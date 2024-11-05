@@ -21,9 +21,9 @@ import torch
 import numpy as np
 import time
 
-FAISS_TEST = True
+FAISS_TEST = False
 PYTORCH3D_TEST = True
-MMCV_TEST = False
+MMCV_TEST = True
 CUDA_TEST = True
 
 if __name__ == "__main__":
@@ -77,7 +77,7 @@ if __name__ == "__main__":
         loss0, _ = my_chamfer_fn(pc0.unsqueeze(0), pc1.unsqueeze(0), truncate_dist=False)
 
         print(f"Pytorch3d Chamfer Distance Cal time: {(time.time() - start_time)*1000:.3f} ms")
-        print("loss: ", loss0)
+        print(f"loss: , {loss0} :.8f")
         print()
 
     if MMCV_TEST:
@@ -99,7 +99,7 @@ if __name__ == "__main__":
         from assets.cuda.chamfer3D import nnChamferDis
         start_time = time.time()
         loss = nnChamferDis(truncate_dist=False)(pc0, pc1)
-        print("loss: ", loss)
+        print(f"loss: , {loss} :.8f")
         print(f"Chamfer Distance Cal time: {(time.time() - start_time)*1000:.3f} ms")
         print()
 
