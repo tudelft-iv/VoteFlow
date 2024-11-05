@@ -375,6 +375,7 @@ class SFVoxelModel(nn.Module):
             "pseudoimages_grid": pseudoimages_grid,
             "feats_voxel_src": feats_voxel_src,
             "feats_voxel_dst": feats_voxel_dst,
+            "corr_inflate": corr_inflate,
             "voxels_src": voxels_src,
             "voting_vol": voting_vols,
             "points_src_offset": point_offsets_src,
