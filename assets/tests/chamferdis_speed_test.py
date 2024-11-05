@@ -12,6 +12,7 @@ Dependence for this test scripts:
     * mmcv
 """
 import os, sys
+import lightning as L
 BASE_DIR = os.path.abspath(os.path.join( os.path.dirname( __file__ ), '..' ))
 BASEF_DIR = os.path.abspath(os.path.join( os.path.dirname( __file__ ), '../..'))
 sys.path.append(BASE_DIR)
@@ -34,7 +35,8 @@ if __name__ == "__main__":
     pc1 = torch.from_numpy(pc1[...,:3]).float().cuda().contiguous()
     pc0.requires_grad = True
     pc1.requires_grad = True
-
+    L.seed_everything(42)
+    
     print(pc0.shape, "demo data: ", pc0[0])
     print(pc1.shape, "demo data: ", pc1[0])
     print('Status after loading data: {:.3f}MB'.format(torch.cuda.memory_allocated()/1024**2))
