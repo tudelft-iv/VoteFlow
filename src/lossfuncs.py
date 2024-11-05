@@ -10,6 +10,8 @@
 # Description: Define the loss function for training.
 """
 import torch
+import torch.nn as nn
+
 from assets.cuda.chamfer3D import nnChamferDis
 MyCUDAChamferDis = nnChamferDis()
 from src.utils.av2_eval import CATEGORY_TO_INDEX, BUCKETED_METACATAGORIES
@@ -39,12 +41,23 @@ def seflowLoss(res_dict, timer=None):
     # fpc1_dynamic = pseudo_pc1from0[pc0_label > 0]
     # NOTE(Qingwen): since we set THREADS_PER_BLOCK is 256
     have_dynamic_cluster = (pc0_dynamic.shape[0] > 256) & (pc1_dynamic.shape[0] > 256)
-
+    
+    print('pseudo_pc1from0: ', pseudo_pc1from0.shape)
+    print('pc1: ', pc1.shape)
+    
     # first item loss: chamfer distance
     # timer[5][1].start("MyCUDAChamferDis")
     # raw: pc0 to pc1, est: pseudo_pc1from0 to pc1, idx means the nearest index
     est_dist0, est_dist1, _, _ = MyCUDAChamferDis.disid_res(pseudo_pc1from0, pc1)
+
     raw_dist0, raw_dist1, raw_idx0, _ = MyCUDAChamferDis.disid_res(pc0, pc1)
+    
+    
+    print('est dist0:', est_dist0.shape)
+    print('est dist1:', est_dist1.shape)
+    print('raw dist0:', raw_dist0.shape)
+    print('raw dist1:', raw_dist1.shape)
+    print('raw idx0:', raw_idx0.shape)
     chamfer_dis = torch.mean(est_dist0[est_dist0 <= TRUNCATED_DIST]) + torch.mean(est_dist1[est_dist1 <= TRUNCATED_DIST])
     # timer[5][1].stop()
     
@@ -84,7 +97,8 @@ def seflowLoss(res_dict, timer=None):
             
             # Eq. 9 in the paper
             max_flow = pc1[raw_idx0[mask][max_idx]] - pc0[mask][max_idx]
-
+            print('cluster_id_flow:', cluster_id_flow.shape)
+            print('max_flow:', max_flow.shape)
             # Eq. 10 in the paper
             moved_cluster_norms = torch.cat((moved_cluster_norms, torch.linalg.vector_norm((cluster_id_flow - max_flow), dim=-1)))
     
@@ -194,3 +208,143 @@ def warpedLoss(res_dict, dist_threshold=2):
     loss += target_to_warped_distances[target_to_warped_distances < dist_threshold].mean()
 
     return {'loss': loss}
+
+def chamfer_dist(pc0, pc1):
+   
+    # Compute min distance between warped point cloud and point cloud at t+1.
+    pc02pc1_dists, pc02pc1_knn_idx, _ = knn_points(p1=pc0.unsqueeze(0), p2=pc1.unsqueeze(0), K=1)
+    pc12pc0_dists, pc12pc0_knn_idx, _ = knn_points(p1=pc1.unsqueeze(0), p2=pc0.unsqueeze(0), K=1)
+
+    print('pc02pc1_dists:', pc02pc1_dists.shape)
+    return pc02pc1_dists[0,:,0], pc12pc0_dists[0,:,0], pc02pc1_knn_idx[0,:,0], pc12pc0_knn_idx[0,:,0]
+
+class nnChamferLoss(nn.Module):
+    def __init__(self, truncate_dist=True):
+        super(nnChamferLoss, self).__init__()
+        self.truncate_dist = truncate_dist
+
+    def forward(self, input0, input1, truncate_dist=-1):
+        input0 = input0.contiguous()
+        input1 = input1.contiguous()
+        dist0, dist1, _, _ = chamfer_dist(input0, input1)
+
+        if truncate_dist<=0:
+            return torch.mean(dist0) + torch.mean(dist1)
+
+        valid_mask0 = (dist0 <= truncate_dist)
+        valid_mask1 = (dist1 <= truncate_dist)
+        truncated_sum = torch.nanmean(dist0[valid_mask0]) + torch.nanmean(dist1[valid_mask1])
+        return truncated_sum
+
+    def dis_res(self, input0, input1):
+        input0 = input0.contiguous()
+        input1 = input1.contiguous()
+        dist0, dist1, _, _ = chamfer_dist(input0, input1)
+        return dist0, dist1
+    
+    def truncated_dis(self, input0, input1):
+        # nsfp: truncated distance way is set >= 2 to 0 but not nanmean
+        cham_x, cham_y = self.dis_res(input0, input1)
+        cham_x[cham_x >= 2] = 0.0
+        cham_y[cham_y >= 2] = 0.0
+        return torch.mean(cham_x) + torch.mean(cham_y)
+    
+    def disid_res(self, input0, input1):
+        input0 = input0.contiguous()
+        input1 = input1.contiguous()
+        dist0, dist1, idx0, idx1 = chamfer_dist(input0, input1)
+        return dist0, dist1, idx0, idx1
+
+ChamferLossPytorch3d = nnChamferLoss()
+
+def seflowchamferLoss(res_dict, timer=None):
+    print('in seflowchamferLoss:')
+    print(res_dict.keys())
+    pc0_label = res_dict['pc0_labels']
+    pc1_label = res_dict['pc1_labels']
+
+    pc0 = res_dict['pc0']
+    pc1 = res_dict['pc1']
+
+    est_flow = res_dict['est_flow']
+
+    pseudo_pc1from0 = pc0 + est_flow
+
+    unique_labels = torch.unique(pc0_label)
+    pc0_dynamic = pc0[pc0_label > 0]
+    pc1_dynamic = pc1[pc1_label > 0]
+    # fpc1_dynamic = pseudo_pc1from0[pc0_label > 0]
+    # NOTE(Qingwen): since we set THREADS_PER_BLOCK is 256
+    have_dynamic_cluster = (pc0_dynamic.shape[0] > 256) & (pc1_dynamic.shape[0] > 256)
+    
+    print('pseudo_pc1from0: ', pseudo_pc1from0.shape)
+    print('pc1: ', pc1.shape)
+    # first item loss: chamfer distance
+    # timer[5][1].start("MyCUDAChamferDis")
+    # raw: pc0 to pc1, est: pseudo_pc1from0 to pc1, idx means the nearest index
+    est_dist0, est_dist1, _, _ = ChamferLossPytorch3d.disid_res(pseudo_pc1from0, pc1)
+    raw_dist0, raw_dist1, raw_idx0, _ = ChamferLossPytorch3d.disid_res(pc0, pc1)
+    
+    print('est dist0:', est_dist0.shape)
+    print('est dist1:', est_dist1.shape)
+    print('raw dist0:', raw_dist0.shape)
+    print('raw dist1:', raw_dist1.shape)
+    print('raw idx0:', raw_idx0.shape)
+    chamfer_dis = torch.mean(est_dist0[est_dist0 <= TRUNCATED_DIST]) + torch.mean(est_dist1[est_dist1 <= TRUNCATED_DIST])
+    # timer[5][1].stop()
+    
+    # second item loss: dynamic chamfer distance
+    # timer[5][2].start("DynamicChamferDistance")
+    dynamic_chamfer_dis = torch.tensor(0.0, device=est_flow.device)
+    if have_dynamic_cluster:
+        dynamic_chamfer_dis += ChamferLossPytorch3d(pseudo_pc1from0[pc0_label>0], pc1_dynamic, truncate_dist=TRUNCATED_DIST)
+    # timer[5][2].stop()
+
+    # third item loss: exclude static points' flow
+    # NOTE(Qingwen): add in the later part on label==0
+    static_cluster_loss = torch.tensor(0.0, device=est_flow.device)
+    
+    # fourth item loss: same label points' flow should be the same
+    # timer[5][3].start("SameClusterLoss")
+    moved_cluster_loss = torch.tensor(0.0, device=est_flow.device)
+    moved_cluster_norms = torch.tensor([], device=est_flow.device)
+    for label in unique_labels:
+        mask = pc0_label == label
+        if label == 0:
+            # Eq. 6 in the paper
+            static_cluster_loss += torch.linalg.vector_norm(est_flow[mask, :], dim=-1).mean()
+        elif label > 0 and have_dynamic_cluster:
+            cluster_id_flow = est_flow[mask, :]
+            cluster_nnd = raw_dist0[mask]
+            if cluster_nnd.shape[0] <= 0:
+                continue
+
+            # Eq. 8 in the paper
+            sorted_idxs = torch.argsort(cluster_nnd, descending=True)
+            nearby_label = pc1_label[raw_idx0[mask][sorted_idxs]] # nonzero means dynamic in label
+            non_zero_valid_indices = torch.nonzero(nearby_label > 0)
+            if non_zero_valid_indices.shape[0] <= 0:
+                continue
+            max_idx = sorted_idxs[non_zero_valid_indices.squeeze(1)[0]]
+            
+            # Eq. 9 in the paper
+            max_flow = pc1[raw_idx0[mask][max_idx]] - pc0[mask][max_idx]
+
+            # Eq. 10 in the paper
+            print('cluster_id_flow:', cluster_id_flow.shape)
+            print('max_flow:', max_flow.shape)
+            moved_cluster_norms = torch.cat((moved_cluster_norms, torch.linalg.vector_norm((cluster_id_flow - max_flow), dim=-1)))
+
+    if moved_cluster_norms.shape[0] > 0:
+        moved_cluster_loss = moved_cluster_norms.mean() # Eq. 11 in the paper
+    elif have_dynamic_cluster:
+        moved_cluster_loss = torch.mean(raw_dist0[raw_dist0 <= TRUNCATED_DIST]) + torch.mean(raw_dist1[raw_dist1 <= TRUNCATED_DIST])
+    # timer[5][3].stop()
+
+    res_loss = {
+        'chamfer_dis': chamfer_dis,
+        'dynamic_chamfer_dis': dynamic_chamfer_dis,
+        'static_flow_loss': static_cluster_loss,
+        'cluster_based_pc0pc1': moved_cluster_loss,
+    }
+    return res_loss
