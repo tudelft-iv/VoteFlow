@@ -45,8 +45,9 @@ class SFVoxelModel(nn.Module):
         # how many bins inside a voxel after quantization
         # assume 72km/h (20m/s), along x/y; 0.1m along z
         e = 1e-8
-        nx = math.ceil((2+e)*nframes / voxel_size[0])  
-        ny = math.ceil((2+e)*nframes / voxel_size[1]) 
+        radius = 2
+        nx = math.ceil((radius+e)*nframes / voxel_size[0])  
+        ny = math.ceil((radius+e)*nframes / voxel_size[1]) 
         nz = math.ceil((0.1+e) / voxel_size[2])  # +/-0.1
         
         self.nx = nx*2 # +/-x
@@ -67,7 +68,7 @@ class SFVoxelModel(nn.Module):
         print(f'using decoder: {self.decoder}')
 
         if self.using_ball_query:
-            self.radius_src = math.ceil(max((2.0+e)/voxel_size[0], (2.0+e)/voxel_size[1])) # define a search window (in meters) within src voxels, aka the rigid motion window
+            self.radius_src = math.ceil(max((radius+e)/voxel_size[0], (radius+e)/voxel_size[1])) # define a search window (in meters) within src voxels, aka the rigid motion window
             print(f'using ball query, search window radius in source pc: {self.radius_src}, m={self.m}, n={self.n}')
         else:
             print(f'using knn, m={self.m}, n={self.n}')
