@@ -102,7 +102,7 @@ class ModelWrapper(LightningModule):
         # compute loss
         total_loss = 0.0
 
-        if self.cfg_loss_name in ['seflowLoss']:
+        if self.cfg_loss_name in ['seflowLoss', 'seflowchamferLoss']:
             loss_items, weights = zip(*[(key, weight) for key, weight in self.add_seloss.items()])
             loss_logger = {'chamfer_dis': 0.0, 'dynamic_chamfer_dis': 0.0, 'static_flow_loss': 0.0, 'cluster_based_pc0pc1': 0.0}
         else:
@@ -144,6 +144,14 @@ class ModelWrapper(LightningModule):
                 loss_logger[key] += res_loss[key]
             # print('In trainer: loss function is called!')
         self.log("trainer/loss", total_loss/batch_sizes, sync_dist=True, batch_size=self.batch_size, prog_bar=True)
+        #
+        # print('Debug:')
+        # print('pc0_valid_lst:', pc0_points_lst[0][:10, :])
+        # print('total_loss:', total_loss)
+        # for i, loss_name in enumerate(loss_items):
+        #     print(loss_name, ':', res_loss[loss_name])
+        # if batch_idx > 3:
+        #     exit()
         if self.add_seloss is not None:
             for key in loss_logger:
                 self.log(f"trainer/{key}", loss_logger[key]/batch_sizes, sync_dist=True, batch_size=self.batch_size)

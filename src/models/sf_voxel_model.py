@@ -284,13 +284,13 @@ class SFVoxelModel(nn.Module):
         # print(corr_src_dst.max(-1)[0])
         # print(corr_src_dst.min(-1)[0])
         corr_inflate = batched_masked_gather(corr_src_dst, knn_idxs_src.long(), knn_idxs_src>=0, fill_value=0) #(bs, num_voxels, m. n)
-        # print('corr_inflate:', corr_inflate.shape, corr_inflate.max(), corr_inflate.min())  
+        # print('corr_inflate:', corr_inflate.shape, corr_inflate[0, :10, 10:14, 100:104])
         self.timer[1][3].stop()
         
         self.timer[1][4].start("Voting")
         
         voting_vols= self.vote(corr_inflate, voxels_src, voxels_dst, knn_idxs_src, knn_idxs_dst) 
-        # print('voting  vols:', voting_vols.shape, voting_vols[0].max(-1)[0].shape, voting_vols[0].min(-1)[0].shape) 
+        # print('voting  vols:', voting_vols.shape, voting_vols[0, :10, 8:12, 8:9])
         
         # voting_vols_flatten = voting_vols.flatten(start_dim=-2)
         # voting_vols_max = voting_vols_flatten.max(-1)[0]

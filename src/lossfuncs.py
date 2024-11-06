@@ -42,8 +42,8 @@ def seflowLoss(res_dict, timer=None):
     # NOTE(Qingwen): since we set THREADS_PER_BLOCK is 256
     have_dynamic_cluster = (pc0_dynamic.shape[0] > 256) & (pc1_dynamic.shape[0] > 256)
     
-    print('pseudo_pc1from0: ', pseudo_pc1from0.shape)
-    print('pc1: ', pc1.shape)
+    # print('pseudo_pc1from0: ', pseudo_pc1from0.shape)
+    # print('pc1: ', pc1.shape)
     
     # first item loss: chamfer distance
     # timer[5][1].start("MyCUDAChamferDis")
@@ -53,11 +53,11 @@ def seflowLoss(res_dict, timer=None):
     raw_dist0, raw_dist1, raw_idx0, _ = MyCUDAChamferDis.disid_res(pc0, pc1)
     
     
-    print('est dist0:', est_dist0.shape)
-    print('est dist1:', est_dist1.shape)
-    print('raw dist0:', raw_dist0.shape)
-    print('raw dist1:', raw_dist1.shape)
-    print('raw idx0:', raw_idx0.shape)
+    # print('est dist0:', est_dist0.shape)
+    # print('est dist1:', est_dist1.shape)
+    # print('raw dist0:', raw_dist0.shape)
+    # print('raw dist1:', raw_dist1.shape)
+    # print('raw idx0:', raw_idx0.shape)
     chamfer_dis = torch.mean(est_dist0[est_dist0 <= TRUNCATED_DIST]) + torch.mean(est_dist1[est_dist1 <= TRUNCATED_DIST])
     # timer[5][1].stop()
     
@@ -97,8 +97,8 @@ def seflowLoss(res_dict, timer=None):
             
             # Eq. 9 in the paper
             max_flow = pc1[raw_idx0[mask][max_idx]] - pc0[mask][max_idx]
-            print('cluster_id_flow:', cluster_id_flow.shape)
-            print('max_flow:', max_flow.shape)
+            # print('cluster_id_flow:', cluster_id_flow.shape)
+            # print('max_flow:', max_flow.shape)
             # Eq. 10 in the paper
             moved_cluster_norms = torch.cat((moved_cluster_norms, torch.linalg.vector_norm((cluster_id_flow - max_flow), dim=-1)))
     
@@ -215,7 +215,7 @@ def chamfer_dist(pc0, pc1):
     pc02pc1_dists, pc02pc1_knn_idx, _ = knn_points(p1=pc0.unsqueeze(0), p2=pc1.unsqueeze(0), K=1)
     pc12pc0_dists, pc12pc0_knn_idx, _ = knn_points(p1=pc1.unsqueeze(0), p2=pc0.unsqueeze(0), K=1)
 
-    print('pc02pc1_dists:', pc02pc1_dists.shape)
+    # print('pc02pc1_dists:', pc02pc1_dists.shape)
     return pc02pc1_dists[0,:,0], pc12pc0_dists[0,:,0], pc02pc1_knn_idx[0,:,0], pc12pc0_knn_idx[0,:,0]
 
 class nnChamferLoss(nn.Module):
@@ -258,8 +258,8 @@ class nnChamferLoss(nn.Module):
 ChamferLossPytorch3d = nnChamferLoss()
 
 def seflowchamferLoss(res_dict, timer=None):
-    print('in seflowchamferLoss:')
-    print(res_dict.keys())
+    # print('in seflowchamferLoss:')
+    # print(res_dict.keys())
     pc0_label = res_dict['pc0_labels']
     pc1_label = res_dict['pc1_labels']
 
@@ -277,19 +277,19 @@ def seflowchamferLoss(res_dict, timer=None):
     # NOTE(Qingwen): since we set THREADS_PER_BLOCK is 256
     have_dynamic_cluster = (pc0_dynamic.shape[0] > 256) & (pc1_dynamic.shape[0] > 256)
     
-    print('pseudo_pc1from0: ', pseudo_pc1from0.shape)
-    print('pc1: ', pc1.shape)
+    # print('pseudo_pc1from0: ', pseudo_pc1from0.shape)
+    # print('pc1: ', pc1.shape)
     # first item loss: chamfer distance
     # timer[5][1].start("MyCUDAChamferDis")
     # raw: pc0 to pc1, est: pseudo_pc1from0 to pc1, idx means the nearest index
     est_dist0, est_dist1, _, _ = ChamferLossPytorch3d.disid_res(pseudo_pc1from0, pc1)
     raw_dist0, raw_dist1, raw_idx0, _ = ChamferLossPytorch3d.disid_res(pc0, pc1)
     
-    print('est dist0:', est_dist0.shape)
-    print('est dist1:', est_dist1.shape)
-    print('raw dist0:', raw_dist0.shape)
-    print('raw dist1:', raw_dist1.shape)
-    print('raw idx0:', raw_idx0.shape)
+    # print('est dist0:', est_dist0.shape)
+    # print('est dist1:', est_dist1.shape)
+    # print('raw dist0:', raw_dist0.shape)
+    # print('raw dist1:', raw_dist1.shape)
+    # print('raw idx0:', raw_idx0.shape)
     chamfer_dis = torch.mean(est_dist0[est_dist0 <= TRUNCATED_DIST]) + torch.mean(est_dist1[est_dist1 <= TRUNCATED_DIST])
     # timer[5][1].stop()
     
@@ -331,8 +331,8 @@ def seflowchamferLoss(res_dict, timer=None):
             max_flow = pc1[raw_idx0[mask][max_idx]] - pc0[mask][max_idx]
 
             # Eq. 10 in the paper
-            print('cluster_id_flow:', cluster_id_flow.shape)
-            print('max_flow:', max_flow.shape)
+            # print('cluster_id_flow:', cluster_id_flow.shape)
+            # print('max_flow:', max_flow.shape)
             moved_cluster_norms = torch.cat((moved_cluster_norms, torch.linalg.vector_norm((cluster_id_flow - max_flow), dim=-1)))
 
     if moved_cluster_norms.shape[0] > 0:

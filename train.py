@@ -65,7 +65,7 @@ def main(cfg):
         cfg.val_data = 'data/Argoverse2_demo/preprocess_v2/sensor/val'
     print('Train dataset path', cfg.train_data)
     print('Val dataset path', cfg.val_data)
-    train_dataset = HDF5Dataset(cfg.train_data, n_frames=cfg.num_frames, dufo=(cfg.loss_fn == 'seflowLoss'))
+    train_dataset = HDF5Dataset(cfg.train_data, n_frames=cfg.num_frames, dufo=(cfg.loss_fn in ['seflowLoss', 'seflowchamferLoss']))
     train_loader = DataLoader(train_dataset,
                               batch_size=cfg.batch_size,
                               shuffle=True,

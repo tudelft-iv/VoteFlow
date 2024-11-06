@@ -3,6 +3,12 @@ import torch.nn as nn
 import torch.nn.functional as F
 from typing import List, Tuple, Dict
 import math
+
+def set_grad(var):
+    def hook(grad):
+        var.grad = grad
+    return hook
+
 class ConvBlock(nn.Module):
     def __init__(self, in_num_channels: int, out_num_channels: int,
                  kernel_size=3, stride=1, padding=1):
@@ -118,7 +124,7 @@ class Decoder(nn.Module):
             decoder.append(torch.nn.Linear(filter_size, filter_size))
             decoder.append(torch.nn.ReLU())
         decoder.append(torch.nn.Linear(filter_size, dim_output))
-        
+
         self.decoder = nn.Sequential(*decoder)
         print(self.decoder)
         
@@ -128,6 +134,10 @@ class Decoder(nn.Module):
         x = torch.cat([x, pts_offsets_feats], dim=-1)
         # print('decoder conv: ', x.shape)
         x = self.decoder(x)
+
+        # print('offset_encoder:', self.offset_encoder.weight.shape, self.offset_encoder.weight[:10, :])
+        # if self.offset_encoder.weight.grad is not None:
+        #    print('offset_encoder grads:', self.offset_encoder.weight.grad.shape, self.offset_encoder.weight.grad[:10,:])
         
         return x
 
