@@ -30,6 +30,7 @@ class SFVoxelModel(nn.Module):
                  voxel_size=(0.2, 0.2, 6),
                  grid_feature_size = [512, 512],
                  decoder='decoder',
+                 decoder_layers=1,
                  use_bn_in_vol=False,
                  use_ball_query=False,
                  vol_conv_hidden_dim=16,
@@ -92,7 +93,7 @@ class SFVoxelModel(nn.Module):
             self.decoder = GRUDecoder(pseudoimage_channels=output_channels)
             print('gru decoder:', self.decoder)
         elif self.decoder == 'decoder':
-            self.decoder = Decoder(dim_input= output_channels * 2 + input_channels*2 , dim_output=3)
+            self.decoder = Decoder(dim_input= output_channels * 2 + input_channels*2 , dim_output=3, layer_size=decoder_layers)
             print('decoder:', self.decoder)
         else:
             raise NotImplementedError(f"decoder {self.decoder} not implemented")
