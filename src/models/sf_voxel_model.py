@@ -87,13 +87,13 @@ class SFVoxelModel(nn.Module):
             self.volconv = VolConv(self.ny, self.nx, hidden_dim=vol_conv_hidden_dim, dim_output=output_channels)
         
         if self.decoder == 'simple_decoder':
-            self.decoder = SimpleDecoder(dim_input=output_channels, dim_output=3)
+            self.decoder = SimpleDecoder(dim_input=output_channels)
             print('simple decoder:', self.decoder)
         elif self.decoder == 'gru_decoder':
             self.decoder = GRUDecoder(pseudoimage_channels=output_channels)
             print('gru decoder:', self.decoder)
         elif self.decoder == 'decoder':
-            self.decoder = Decoder(dim_input= output_channels * 2 + input_channels*2 , dim_output=3, layer_size=decoder_layers)
+            self.decoder = Decoder(dim_input= output_channels * 2 + input_channels*2, layer_size=decoder_layers)
             print('decoder:', self.decoder)
         else:
             raise NotImplementedError(f"decoder {self.decoder} not implemented")

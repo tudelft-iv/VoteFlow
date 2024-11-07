@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH --job-name="sf_voxel_model_with_seloss_new_dst_radius_m_8_n_128_src_knn_fixed_bug"
+#SBATCH --job-name="sf_voxel_model_with_seloss_new_dst_radius_m_8_n_128_src_knn_fixed_bug_dec_4_layers"
 #SBATCH --partition=cor 
 #SBATCH --time=72:00:00
 
@@ -15,8 +15,8 @@
 #SBATCH --gpus-per-task=8
 
 #SBATCH --mail-type=END
-#SBATCH --output=slurm_logs/slurm_sf_voxel_model_with_seloss_new_dst_radius_m_8_n_128_src_knn_fixed_bug_%j.out
-#SBATCH --error=slurm_logs/slurm_sf_voxel_model_with_seloss_new_dst_radius_m_8_n_128_src_knn_fixed_bug_%j.err
+#SBATCH --output=slurm_logs/slurm_sf_voxel_model_with_seloss_new_dst_radius_m_8_n_128_src_knn_fixed_bug_dec_4_layers_%j.out
+#SBATCH --error=slurm_logs/slurm_sf_voxel_model_with_seloss_new_dst_radius_m_8_n_128_src_knn_fixed_bug_dec_4_layers_%j.err
 
 module load cuda/11.8
 module load devtoolset/11
@@ -35,8 +35,8 @@ nvidia-smi
 
 srun singularity exec --nv -B /home/nfs/$USER:/home/nfs/$USER -B /tudelft.net/:/tudelft.net/ $APPTAINER_ROOT/$APPTAINER_NAME \
 python train.py model=sf_voxel_model lr=2e-4 epochs=20 batch_size=4 \
-model.target.use_bn_in_vol=True model.target.m=8 model.target.n=128 \
-wandb_mode="online" gpus="auto" show_progress_bar=False \
-loss_fn=seflowLoss exp_note="with_seflowLoss_new_dst_radius_m_8_n_128_knn_src_fixed_bug"  "add_seloss={chamfer_dis: 1.0, static_flow_loss: 1.0, dynamic_chamfer_dis: 1.0, cluster_based_pc0pc1: 1.0}" "model.val_monitor=val/Dynamic/Mean"
+model.target.use_bn_in_vol=True model.target.m=8 model.target.n=128 model.target.decoder_layers=4 \
+wandb_mode="online" gpus="auto" \
+loss_fn=seflowLoss exp_note="with_seflowLoss_new_dst_radius_m_8_n_128_knn_src_fixed_bug_dec_4_layers"  "add_seloss={chamfer_dis: 1.0, static_flow_loss: 1.0, dynamic_chamfer_dis: 1.0, cluster_based_pc0pc1: 1.0}" "model.val_monitor=val/Dynamic/Mean"
 
 nvidia-smi --query-accounted-apps='gpu_utilization,mem_utilization,max_memory_usage,time' --format='csv' | /usr/bin/grep -v -F "$previous"
