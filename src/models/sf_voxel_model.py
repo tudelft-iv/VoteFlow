@@ -12,7 +12,7 @@ from .basic.decoder import LinearDecoder
 from .basic import cal_pose0to1
 
 from .ht.ht_cuda import HT_CUDA
-from .model_utils.util_model import Backbone, VolConv, VolConvBN, Decoder, FastFlowUNet, SimpleDecoder, GRUDecoder
+from .model_utils.util_model import Backbone, VolConv, VolConvBN, Decoder, FastFlow3DUNet, SimpleDecoder, GRUDecoder
 from .model_utils.util_func import float_division, tensor_mem_size, calculate_unq_voxels, batched_masked_gather, pad_to_batch
 
 import warnings
@@ -78,7 +78,7 @@ class SFVoxelModel(nn.Module):
         self.pseudo_image_dims = pseudo_image_dims
         
         #self.backbone = Backbone(input_channels, output_channels)
-        self.backbone = FastFlowUNet(input_channels, output_channels) ## output_channel 64
+        self.backbone = FastFlow3DUNet(input_channels, output_channels) ## output_channel 64
         self.vote = HT_CUDA(self.ny, self.nx, self.nz)
         
         if use_bn_in_vol:
@@ -290,7 +290,7 @@ class SFVoxelModel(nn.Module):
         
         self.timer[1][4].start("Voting")
         # print('corr_src_dst:', corr_src_dst.shape)
-        voting_vols= self.vote(corr_src_dst[:, :, :, None], voxels_src, voxels_dst, knn_idxs_src, knn_idxs_dst).squeeze(2) # [b, l, ny, nx]
+        voting_vols= self.vote(corr_src_dst[:, :, :, None], voxels_src, voxels_dst, knn_idxs_src, knn_idxs_dst) # [b, l, c, ny, nx]
         # print('voting  vols:', voting_vols.shape)
         
         # voting_vols_flatten = voting_vols.flatten(start_dim=-2)

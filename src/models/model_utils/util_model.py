@@ -80,7 +80,7 @@ class VolConv(nn.Module):
         self.relu = nn.ReLU()
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        b, l, h, w = x.shape
+        b, l, _, h, w = x.shape
         x = self.conv1(x.view(b*l, 1, h, w))
         x = self.maxpool(x)
         x = self.conv2(x)
@@ -100,7 +100,7 @@ class VolConvBN(nn.Module):
         self.relu = nn.ReLU()
     
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        b, l, h, w = x.shape
+        b, l, _, h, w = x.shape
         x = self.conv1(x.view(b*l, 1, h, w))
         x = self.conv2(x)
         # print(x.shape)
@@ -266,7 +266,7 @@ class UpsampleSkip(nn.Module):
         u5_res = self.u4_u5(torch.cat([u2_res, u3_res], dim=1))
         return u5_res
 
-class FastFlowUNet(nn.Module):
+class FastFlow3DUNet(nn.Module):
     """
     Standard UNet with a few modifications:
      - Uses Bilinear interpolation instead of transposed convolutions
