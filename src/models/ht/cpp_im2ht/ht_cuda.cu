@@ -29,6 +29,7 @@ ht_cuda_forward(
 
     const int b = feats_src_dst.size(0);
     const int l = feats_src_dst.size(1); // num of points
+    const int c = feats_src_dst.size(-1); // num of channels
     const int m = idxs_src.size(2); // m
     const int n = idxs_dst.size(2); // n
 
@@ -37,7 +38,7 @@ ht_cuda_forward(
  
     // printf("dimensions b=%06d, l=%06d, m=%06d, n=%06d, h=%06d, w= %06d, d= %06d \n",
     //                       b, l, m, n, h, w, d);
-    auto vol_ht = at::zeros({b, l, h, w}, feats_src_dst.options());
+    auto vol_ht = at::zeros({b, l, c, h, w}, feats_src_dst.options());
 
     AT_DISPATCH_FLOATING_TYPES(vol_ht.type(), "im2ht_cuda_forward", ([&] {
         im2ht_cuda_forward(at::cuda::getCurrentCUDAStream(),
@@ -47,7 +48,7 @@ ht_cuda_forward(
                     voxels_dst.data<scalar_t>(),
                     idxs_src.data<scalar_t>(),
                     idxs_dst.data<scalar_t>(),
-                    b, l,
+                    b, l, c,
                     m, n, 
                     h, w, d
                     );
@@ -82,10 +83,10 @@ ht_cuda_backward(
 
     // AT_ASSERTM(grad_output.type().is_cuda(), "grad_output must be a CUDA tensor");
 
-    // grad_output: [b, l, 2*c, h, w]
+    // grad_output: [b, l, c, h, w]
     const int b = grad_vol.size(0);
     const int l = grad_vol.size(1);
-    const int c = grad_vol.size(2) / 2;
+    const int c = grad_vol.size(2);
 
     const int m = idxs_src.size(2); // m
     const int n = idxs_dst.size(2); // n
@@ -94,7 +95,7 @@ ht_cuda_backward(
     // AT_ASSERTM(h_ == h && w_ == w && d_== d,
     //     "grad_out shape and predefined shape do not match: ", h_, ' ', w_, ' ', d_, 'vs', h, ' ', w, ' ', d);
 
-    auto grad_feats_src_dst = at::zeros({b, l, m, n}, grad_vol.options());
+    auto grad_feats_src_dst = at::zeros({b, l, n, c}, grad_vol.options());
     
     AT_DISPATCH_FLOATING_TYPES(grad_vol.type(), "im2ht_cuda_backward", ([&] {
         im2ht_cuda_backward(at::cuda::getCurrentCUDAStream(),
@@ -104,7 +105,7 @@ ht_cuda_backward(
                     voxels_dst.data<scalar_t>(),
                     idxs_src.data<scalar_t>(),
                     idxs_dst.data<scalar_t>(),
-                    b, l,
+                    b, l, c,
                     m, n, 
                     h, w, d
                 );

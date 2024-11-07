@@ -22,7 +22,7 @@ class HT_CUDA(nn.Module):
                     vote incrementally by the amount of correponding src and dst features;
     """
     """ mapping from points to histgrams
-        input: feats_src_dst [b, l, m, n]
+        input: feats_src_dst [b, l, n, c]
         input: voxels_src [b, l, 2]
         input: voxels_dst [b, l, 2]
         input: idxs_src [b, l, m]
@@ -47,6 +47,7 @@ class HT_CUDA(nn.Module):
     def forward(self, feats_src_dst, voxels_src, voxels_dst, idxs_src, idxs_dst):
         # print('ht_cuda forward: ', feats.shape, idxs_fps.shape, idxs_src.shape, idxs_dst.shape, bins_x.shape, bins_y.shape, bins_z.shape)
         # print(f'( k:{self.k:04d}, m: {self.m:04d}, n: {self.n:04d}, h: {self.h:04d}, w: {self.w:04d}, d: {self.d:04d} )')
+        assert feats_src_dst.dim()==4
         assert voxels_src.shape == voxels_dst.shape
 
         b, l, n = idxs_dst.shape

@@ -39,7 +39,7 @@ print('device: ', device)
 
 b = 2
 l = 64
-c=5
+c=3
 m = 4
 n = 8
 max_x=0.5
@@ -55,7 +55,7 @@ vote = vote.double().to(device)
 
 print('grad check***********')    
 
-feats = torch.rand(size=(b, l, m, n), requires_grad=True).double().to(device)
+feats = torch.rand(size=(b, l, n, 3), requires_grad=True).double().to(device)
 voxels_src = torch.randint(size=(b, l, 2), low=0, high=nx).double().to(device)
 voxels_dst = torch.randint(size=(b, l, 2), low=0, high=nx).double().to(device)
 idxs_src = torch.randint(0, l, size=(b, l, m)).double().to(device)

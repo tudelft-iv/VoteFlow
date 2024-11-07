@@ -285,14 +285,13 @@ class SFVoxelModel(nn.Module):
         # print('corr_src_dst:', corr_src_dst.shape, corr_src_dst.max(-1)[0].shape, corr_src_dst.min(-1)[0].shape) # (bs, num_voxels, n)
         # print(corr_src_dst.max(-1)[0])
         # print(corr_src_dst.min(-1)[0])
-        corr_inflate = batched_masked_gather(corr_src_dst, knn_idxs_src.long(), knn_idxs_src>=0, fill_value=0) #(bs, num_voxels, m. n)
         # print('corr_inflate:', corr_inflate.shape, corr_inflate[0, :10, 10:14, 100:104])
         self.timer[1][3].stop()
         
         self.timer[1][4].start("Voting")
-        
-        voting_vols= self.vote(corr_inflate, voxels_src, voxels_dst, knn_idxs_src, knn_idxs_dst) 
-        # print('voting  vols:', voting_vols.shape, voting_vols[0, :10, 8:12, 8:9])
+        # print('corr_src_dst:', corr_src_dst.shape)
+        voting_vols= self.vote(corr_src_dst[:, :, :, None], voxels_src, voxels_dst, knn_idxs_src, knn_idxs_dst).squeeze(2) # [b, l, ny, nx]
+        # print('voting  vols:', voting_vols.shape)
         
         # voting_vols_flatten = voting_vols.flatten(start_dim=-2)
         # voting_vols_max = voting_vols_flatten.max(-1)[0]
@@ -377,7 +376,7 @@ class SFVoxelModel(nn.Module):
             "pseudoimages_grid": pseudoimages_grid,
             "feats_voxel_src": feats_voxel_src,
             "feats_voxel_dst": feats_voxel_dst,
-            "corr_inflate": corr_inflate,
+            "corr": corr_src_dst,
             "voxels_src": voxels_src,
             "voting_vol": voting_vols,
             "points_src_offset": point_offsets_src,
