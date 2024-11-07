@@ -145,7 +145,9 @@ def main(cfg):
                          strategy="ddp_find_unused_parameters_false" if num_gpus > 1 else "auto",
                          callbacks=callbacks,
                          max_epochs=cfg.epochs,
-                         sync_batchnorm=cfg.sync_bn)
+                         sync_batchnorm=cfg.sync_bn,
+                         enable_model_summary=True,
+                         enable_progress_bar=cfg.show_progress_bar)
     
     
     if trainer.global_rank == 0:
