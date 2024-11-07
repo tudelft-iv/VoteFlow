@@ -146,7 +146,8 @@ class GRUDecoder(nn.Module):
         super().__init__()
         self.offset_encoder = nn.Linear(3, pseudoimage_channels)
 
-        self.proj_head = nn.Sequential([nn.Linear(pseudoimage_channels*3, pseudoimage_channels*2), nn.ReLU()])
+        self.proj_head = nn.Sequential(nn.Linear(pseudoimage_channels * 3, pseudoimage_channels * 2),
+                                       nn.ReLU())
 
         self.gru = ConvGRU(input_dim=pseudoimage_channels, hidden_dim=pseudoimage_channels*2)
 
