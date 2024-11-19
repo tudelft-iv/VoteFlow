@@ -226,6 +226,8 @@ class OfficialMetrics:
             self.epe_3way[key].append(epe_dict[key])
 
         for item_ in bucket_dict:
+            if item_.count == 0:
+                continue
             category_name = item_.name
             speed_tuple = item_.speed_thresholds
             self.bucketedMatrix.accumulate_value(

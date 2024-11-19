@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 from typing import List, Tuple, Dict
 from . import ConvWithNorms
-
+from src.models.model_utils.util_model import ConvGRU
 SPLIT_BATCH_SIZE = 512
 
 class MMHeadDecoder(nn.Module):
@@ -126,24 +126,24 @@ class LinearDecoder(nn.Module):
             flow_results.append(flow)
         return flow_results
 
-# from https://github.com/weiyithu/PV-RAFT/blob/main/model/update.py
-class ConvGRU(nn.Module):
-    def __init__(self, input_dim=64, hidden_dim=128):
-        super(ConvGRU, self).__init__()
-        self.convz = nn.Conv1d(input_dim+hidden_dim, hidden_dim, 1)
-        self.convr = nn.Conv1d(input_dim+hidden_dim, hidden_dim, 1)
-        self.convq = nn.Conv1d(input_dim+hidden_dim, hidden_dim, 1)
+# # from https://github.com/weiyithu/PV-RAFT/blob/main/model/update.py
+# class ConvGRU(nn.Module):
+#     def __init__(self, input_dim=64, hidden_dim=128):
+#         super(ConvGRU, self).__init__()
+#         self.convz = nn.Conv1d(input_dim+hidden_dim, hidden_dim, 1)
+#         self.convr = nn.Conv1d(input_dim+hidden_dim, hidden_dim, 1)
+#         self.convq = nn.Conv1d(input_dim+hidden_dim, hidden_dim, 1)
 
-    def forward(self, h, x):
-        hx = torch.cat([h, x], dim=1)
+#     def forward(self, h, x):
+#         hx = torch.cat([h, x], dim=1)
 
-        z = torch.sigmoid(self.convz(hx))
-        r = torch.sigmoid(self.convr(hx))
-        rh_x = torch.cat([r*h, x], dim=1)
-        q = torch.tanh(self.convq(rh_x))
+#         z = torch.sigmoid(self.convz(hx))
+#         r = torch.sigmoid(self.convr(hx))
+#         rh_x = torch.cat([r*h, x], dim=1)
+#         q = torch.tanh(self.convq(rh_x))
 
-        h = (1 - z) * h + z * q
-        return h
+#         h = (1 - z) * h + z * q
+#         return h
     
 class ConvGRUDecoder(nn.Module):
 
@@ -181,13 +181,13 @@ class ConvGRUDecoder(nn.Module):
         point_offsets_feature = self.offset_encoder(point_offsets)
         
         # [N, 128] -> [N, 128, 1]
-        concatenated_vectors = concatenated_vectors.unsqueeze(2)
+        concatenated_vectors = concatenated_vectors
 
         # print(' In GRU decoder: before called gru')
         for itr in range(self.num_iters):
-            concatenated_vectors = self.gru(concatenated_vectors, point_offsets_feature.unsqueeze(2))
+            concatenated_vectors = self.gru(concatenated_vectors, point_offsets_feature)
         # print(' In GRU decoder: after called gru')
-        flow = self.decoder(torch.cat([concatenated_vectors.squeeze(2), point_offsets_feature], dim=1))
+        flow = self.decoder(torch.cat([concatenated_vectors, point_offsets_feature], dim=1))
         # print(' In GRU decoder: after decoder')
         return flow
 

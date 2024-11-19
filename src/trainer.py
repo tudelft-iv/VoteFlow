@@ -300,8 +300,11 @@ class ModelWrapper(LightningModule):
             batch, res_dict = self.run_model_wo_ground_data(batch)
             self.eval_only_step_(batch, res_dict)
         else:
-            res_dict = self.model(batch)
-            self.train_validation_step_(batch, res_dict)
+            try:
+                res_dict = self.model(batch)
+                self.train_validation_step_(batch, res_dict)
+            except:
+                print(f'Batch:{batch_idx} has error!')
 
     def test_step(self, batch, batch_idx):
         batch, res_dict = self.run_model_wo_ground_data(batch)
