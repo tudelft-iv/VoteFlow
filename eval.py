@@ -48,7 +48,7 @@ def main(cfg):
     
     cfg.output = exp_id + f"-e{torch_load_ckpt['epoch']}-{cfg.av2_mode}-v{cfg.leaderboard_version}"
     cfg.model.update(checkpoint_params.cfg.model)
-    
+    print(type(cfg))
     mymodel = ModelWrapper.load_from_checkpoint(cfg.checkpoint, cfg=cfg, eval=True)
     print(f"\n---LOG[eval]: Loaded model from {cfg.checkpoint}. The backbone network is {checkpoint_params.cfg.model.name}.\n")
 
@@ -70,7 +70,7 @@ def main(cfg):
     print(cfg.dataset_path)
     
     val_loader = DataLoader(
-        HDF5Dataset(cfg.dataset_path + "/val", 
+        HDF5Dataset(cfg.dataset_path + f"/{cfg.av2_mode}", #"/val", 
                     n_frames=checkpoint_params.cfg.num_frames  if 'num_frames' in checkpoint_params.cfg else 2,
                     ),
         batch_size=1,

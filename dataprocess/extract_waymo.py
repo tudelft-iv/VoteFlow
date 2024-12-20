@@ -18,7 +18,7 @@ import os
 os.environ["OMP_NUM_THREADS"] = "1"
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 # NOTE(2023/02/29): it's really important to set this! otherwise, the point cloud will be wrong. really wried.
-os.environ["CUDA_VISIBLE_DEVICES"] = "4,5"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 import multiprocessing
 from multiprocessing import Pool, current_process
