@@ -25,7 +25,6 @@ from src.utils import bc
 @hydra.main(version_base=None, config_path="conf", config_name="save")
 def main(cfg):
     pl.seed_everything(cfg.seed, workers=True)
-    output_dir = HydraConfig.get().runtime.output_dir
 
     if not os.path.exists(cfg.checkpoint):
         print(f"Checkpoint {cfg.checkpoint} does not exist. Need checkpoints for evaluation.")
@@ -40,18 +39,22 @@ def main(cfg):
     cfg.model.update(checkpoint_params.cfg.model)
     mymodel = ModelWrapper.load_from_checkpoint(cfg.checkpoint, cfg=cfg, eval=True)
 
-    wandb_logger = WandbLogger(save_dir=output_dir,
-                               project=f"sceneflow_translation_voting", 
-                               name=f"{cfg.output}",
-                               offline=True)
+    scene_id_list = cfg.scene_id
     
-    trainer = pl.Trainer(logger=wandb_logger, devices=cfg.gpus)
-    # NOTE(Qingwen): search & check in pl_model.py : def test_step(self, batch, res_dict)
-    trainer.test(model = mymodel, \
-                 dataloaders = DataLoader(\
-                     HDF5Dataset(cfg.dataset_path, n_frames=checkpoint_params.cfg.num_frames if 'num_frames' in checkpoint_params.cfg else 2), \
-                    batch_size=1, shuffle=False))
-    wandb.finish()
+    
+    for scene_id in scene_id_list:
+        print('scene_id:', scene_id)
+        trainer = pl.Trainer(devices=cfg.gpus)
+        # NOTE(Qingwen): search & check in pl_model.py : def test_step(self, batch, res_dict)
+        trainer.test(model = mymodel, \
+                    dataloaders = DataLoader(\
+                        HDF5Dataset(cfg.dataset_path, 
+                                    n_frames=checkpoint_params.cfg.num_frames if 'num_frames' in checkpoint_params.cfg else 2,
+                                    eval_per_scene=True,
+                                    scene_id=scene_id,), 
+                        batch_size=1, 
+                        shuffle=False))
+        print('###'*20)
 
 if __name__ == "__main__":
     main()

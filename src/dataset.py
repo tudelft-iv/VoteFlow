@@ -73,7 +73,7 @@ def collate_fn_pad(batch):
 
     return res_dict
 class HDF5Dataset(Dataset):
-    def __init__(self, directory, n_frames=2, dufo=False, eval = False, leaderboard_version=1):
+    def __init__(self, directory, n_frames=2, dufo=False, eval = False, eval_per_scene=False, scene_id=None, leaderboard_version=1):
         '''
         directory: the directory of the dataset
         n_frames: the number of frames we use, default is 2: current, next if more then it's the history from current.
@@ -100,6 +100,15 @@ class HDF5Dataset(Dataset):
             self.eval_index = eval
             with open(eval_index_file, 'rb') as f:
                 self.eval_data_index = pickle.load(f)
+        elif eval_per_scene:
+            assert scene_id is not None
+            eval_index_file = os.path.join(self.directory, 'val_per_scene', f'{scene_id}_eval.pkl')
+            if not os.path.exists(eval_index_file):
+                raise Exception(f"No eval index file found! Please check {self.directory}/val_per_scene")
+            self.eval_index = eval_per_scene
+            with open(eval_index_file, 'rb') as f:
+                self.eval_data_index = pickle.load(f)
+            
                 
         self.scene_id_bounds = {}  # 存储每个scene_id的最大最小timestamp和位置
         for idx, (scene_id, timestamp) in enumerate(self.data_index):
