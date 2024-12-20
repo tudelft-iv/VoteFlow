@@ -125,16 +125,6 @@ def main(cfg):
     else:
         # check local tensorboard logging: tensorboard --logdir logs/jobs/{log folder}
         logger = TensorBoardLogger(save_dir=output_dir, name="logs")
-
-    if isinstance(cfg.gpus, ListConfig):
-        num_gpus = len(cfg.gpus)
-    elif isinstance(cfg.gpus,int):
-        num_gpus = cfg.gpus
-    elif cfg.gpus == 'auto':
-        cfg.gpus = torch.cuda.device_count() if torch.cuda.is_available() else 0
-        num_gpus = cfg.gpus
-    else:
-        raise ValueError("cfg.gpus should be a list or int.")
             
     trainer = pl.Trainer(logger=logger,
                          log_every_n_steps=50,
@@ -142,11 +132,12 @@ def main(cfg):
                          devices=cfg.gpus,
                          check_val_every_n_epoch=cfg.val_every,
                          gradient_clip_val=cfg.gradient_clip_val,
-                         strategy="ddp_find_unused_parameters_false" if num_gpus > 1 else "auto",
+                         strategy="ddp",
                          callbacks=callbacks,
                          max_epochs=cfg.epochs,
                          sync_batchnorm=cfg.sync_bn,
                          enable_model_summary=True,
+                         num_nodes=1,
                          enable_progress_bar=cfg.show_progress_bar)
     
     
