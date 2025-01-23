@@ -2,6 +2,7 @@ name: sf_voxel_model
 
 target:
   _target_: src.models.SFVoxelModel
+  using_voting: True
   nframes: 1
   m: 8
   n: 64

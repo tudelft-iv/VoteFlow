@@ -41,14 +41,14 @@ def main(cfg):
     torch_load_ckpt = torch.load(cfg.checkpoint)
     checkpoint_params = DictConfig(torch_load_ckpt["hyper_parameters"])
     
-    print(checkpoint_params.keys())
+    # print(checkpoint_params.keys())
 
     exp_id = checkpoint_params.cfg.get('exp_id', cfg.model.name)
-    print(exp_id)
+    # print(exp_id)
     
     cfg.output = exp_id + f"-e{torch_load_ckpt['epoch']}-{cfg.av2_mode}-v{cfg.leaderboard_version}"
     cfg.model.update(checkpoint_params.cfg.model)
-    print(type(cfg))
+    # print(type(cfg))
     mymodel = ModelWrapper.load_from_checkpoint(cfg.checkpoint, cfg=cfg, eval=True)
     print(f"\n---LOG[eval]: Loaded model from {cfg.checkpoint}. The backbone network is {checkpoint_params.cfg.model.name}.\n")
 
@@ -56,13 +56,13 @@ def main(cfg):
                                project=f"{cfg.wandb_project_name}", 
                                name=f"{cfg.output}",
                                offline=(cfg.wandb_mode == "offline"))
-    print(type(cfg.gpus))
+    # print(type(cfg.gpus))
     if isinstance(cfg.gpus, ListConfig):
         assert len(cfg.gpus) == 1, "Only support single GPU for evaluation."
     else:
         cfg.gpus = 1 
         
-    print(cfg.gpus)
+    # print(cfg.gpus)
     trainer = pl.Trainer(logger=wandb_logger, devices=cfg.gpus)
     # NOTE(Qingwen): search & check: def eval_only_step_(self, batch, res_dict)
     

@@ -28,7 +28,7 @@ sys.path.append(BASE_DIR)
 from src.utils.mics import import_func, weights_init, zip_res
 from src.utils.av2_eval import write_output_file
 from src.models.basic import cal_pose0to1
-from src.utils.eval_metric import OfficialMetrics, evaluate_leaderboard, evaluate_leaderboard_v2
+from src.utils.eval_metric import OfficialMetrics, evaluate_leaderboard, evaluate_leaderboard_v2, evaluate_size_bucketed
 
 # debugging tools
 # import faulthandler
@@ -64,12 +64,16 @@ class ModelWrapper(LightningModule):
         self.batch_size = int(cfg.batch_size) if 'batch_size' in cfg else 1
         self.lr = cfg.lr if 'lr' in cfg else None
         self.epochs = cfg.epochs if 'epochs' in cfg else None
-        
-        self.metrics = OfficialMetrics()
+
 
         self.load_checkpoint_path = cfg.checkpoint if 'checkpoint' in cfg else None
 
+        self.eval_with_size_bucket = cfg.get('with_size_bucket_eval', False)
+        if self.eval_with_size_bucket:
+            self.data_path = 'data/Argoverse2/preprocess_v2/sensor'
 
+        self.metrics = OfficialMetrics(eval_size_bucketed=self.eval_with_size_bucket)
+        
         self.leaderboard_version = cfg.leaderboard_version if 'leaderboard_version' in cfg else 1
         # NOTE(Qingwen): since we have seflow version which is unsupervised, we need to set the flag to false.
         self.supervised_flag = cfg.supervised_flag if 'supervised_flag' in cfg else True
@@ -174,8 +178,7 @@ class ModelWrapper(LightningModule):
                                            batch['flow_is_valid'][batch_id][valid_from_pc2res], batch['flow_category_indices'][batch_id][valid_from_pc2res])
                 v2_dict = evaluate_leaderboard_v2(final_flow_, pose_flow, batch['pc0'][batch_id][valid_from_pc2res], gt_flow[valid_from_pc2res], \
                                         batch['flow_is_valid'][batch_id][valid_from_pc2res], batch['flow_category_indices'][batch_id][valid_from_pc2res])
-                
-                self.metrics.step(v1_dict, v2_dict)
+                self.metrics.step(v1_dict, v2_dict, None)
         else:
             pass
 
@@ -227,10 +230,14 @@ class ModelWrapper(LightningModule):
                 self.log(f"val/{type_}/{key}", self.metrics.bucketed[key][type_], sync_dist=True)
         for key in self.metrics.epe_3way:
             self.log(f"val/{key}", self.metrics.epe_3way[key], sync_dist=True)
+        if self.eval_with_size_bucket:
+            for key in self.metrics.size_bucket_epe:
+                self.log(f"val/size_metric/{key}/Static", self.metrics.size_bucket_epe[key]['Static'], sync_dist=True)
+                self.log(f"val/size_metric/{key}/Dynamic", self.metrics.size_bucket_epe[key]['Dynamic'], sync_dist=True)
         
         self.metrics.print()
 
-        self.metrics = OfficialMetrics()
+        self.metrics = OfficialMetrics(self.eval_with_size_bucket)
 
         if self.save_res:
             print(f"We already write the flow_est into the dataset, please run following commend to visualize the flow. Copy and paste it to your terminal:")
@@ -260,13 +267,45 @@ class ModelWrapper(LightningModule):
         # print('final flow:', final_flow.shape)
         if self.av2_mode == 'val': # since only val we have ground truth flow to eval
             gt_flow = batch["flow"]
-            v1_dict = evaluate_leaderboard(final_flow[eval_mask], pose_flow[eval_mask], pc0[eval_mask], \
-                                       gt_flow[eval_mask], batch['flow_is_valid'][eval_mask], \
-                                       batch['flow_category_indices'][eval_mask])
-            v2_dict = evaluate_leaderboard_v2(final_flow[eval_mask], pose_flow[eval_mask], pc0[eval_mask], \
-                                    gt_flow[eval_mask], batch['flow_is_valid'][eval_mask], batch['flow_category_indices'][eval_mask])
+            v1_dict = evaluate_leaderboard(final_flow[eval_mask], 
+                                           pose_flow[eval_mask], 
+                                           pc0[eval_mask],
+                                           gt_flow[eval_mask], 
+                                           batch['flow_is_valid'][eval_mask],
+                                           batch['flow_category_indices'][eval_mask])
+            v2_dict = evaluate_leaderboard_v2(final_flow[eval_mask], 
+                                              pose_flow[eval_mask], 
+                                              pc0[eval_mask],
+                                              gt_flow[eval_mask], 
+                                              batch['flow_is_valid'][eval_mask],
+                                              batch['flow_category_indices'][eval_mask])
             
-            self.metrics.step(v1_dict, v2_dict)
+            if self.eval_with_size_bucket:
+                # print(batch.keys())
+                # print(res_dict.keys())
+                scene_id = batch['scene_id']
+                timestamp = batch['timestamp']
+                # print('eval_mask shape:', eval_mask.shape)
+                # print('pc0:',pc0.shape)
+                
+                # data_path_splits = self.data_path.split('/')[:2]
+                
+                sample_dict = dict(
+                    scene_id = scene_id,
+                    timestamp = timestamp,
+                    eval_mask = eval_mask)
+                
+                size_bucketed_dict = evaluate_size_bucketed(final_flow[eval_mask], 
+                                                        pose_flow[eval_mask], 
+                                                        pc0[eval_mask],
+                                                        gt_flow[eval_mask], 
+                                                        batch['flow_is_valid'][eval_mask],
+                                                        batch['flow_category_indices'][eval_mask],
+                                                        sample_dict)
+            else: 
+                size_bucketed_dict = None
+                                                       
+            self.metrics.step(v1_dict, v2_dict, size_bucketed_dict)
         
         # NOTE (Qingwen): Since val and test, we will force set batch_size = 1 
         if self.save_res or self.av2_mode == 'test': # test must save data to submit in the online leaderboard.    

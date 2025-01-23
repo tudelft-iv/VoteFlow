@@ -24,6 +24,7 @@ class SFVoxelModel(nn.Module):
                  nframes=1, 
                  m=8, 
                  n=64, 
+                 using_voting=True,
                  input_channels=32,
                  output_channels=64, 
                  point_cloud_range = [-51.2, -51.2, -3, 51.2, 51.2, 3], 
@@ -43,62 +44,35 @@ class SFVoxelModel(nn.Module):
 
         # a hack there, may and may not have any impact depends on the setting.
         assert voxel_size[0]==voxel_size[1]
-
-        # how many bins inside a voxel after quantization
-        # assume 72km/h (20m/s), along x/y; 0.1m along z
-        e = 1e-8
-        radius = 2
-        nx = math.ceil((radius+e)*nframes / voxel_size[0])  
-        ny = math.ceil((radius+e)*nframes / voxel_size[1]) 
-        nz = math.ceil((0.1+e) / voxel_size[2])  # +/-0.1
+        self.using_voting = using_voting
+        print('Using voting:', self.using_voting)
         
-        self.nx = nx*2 # +/-x
-        self.ny = ny*2 # +/-y
-        self.nz = nz*2 # +/-z
-        print('n x/y/z: ', self.nx, self.ny, self.nz)
-                
+        # General architecture:
         pseudo_image_dims = grid_feature_size[:2] #int((point_cloud_range[3]-point_cloud_range[0])/voxel_size[0]), int((point_cloud_range[4]-point_cloud_range[1])/voxel_size[1])) # ignore z dimension
-    
-        self.nframes = nframes
-        self.m = m # m knn within src, for each src point
-        self.using_ball_query = use_ball_query
-
-        self.n = n # n knn between src and dst, for each src voxel
         self.decoder = decoder
-        self.radius_dst = max(nx, ny) # define a search window for a src voxel in dst voxels for calculating translations
-        print('search window radius in target pc:', self.radius_dst)
+                    
         print(f'using decoder: {self.decoder}')
-
-        if self.using_ball_query:
-            self.radius_src = math.ceil(max((radius+e)/voxel_size[0], (radius+e)/voxel_size[1])) # define a search window (in meters) within src voxels, aka the rigid motion window
-            print(f'using ball query to search window radius in source pc: {self.radius_src}, m={self.m};')
-        else:
-            print(f'using knn to search window radius in source pc, m={self.m};')
-        print(f'using ball query to search in target pc, n={self.n}.')
-        self.use_separate_feats = use_separate_feats_voting
-        print(f'using separate features for voting: {self.use_separate_feats}')
+        
         self.point_cloud_range = point_cloud_range
         self.voxel_size = voxel_size
         self.pseudo_image_dims = pseudo_image_dims
-        
         #self.backbone = Backbone(input_channels, output_channels)
         self.backbone = FastFlow3DUNet(input_channels, output_channels) ## output_channel 64
-        self.vote = HT_CUDA(self.ny, self.nx, self.nz)
-        
-        if use_bn_in_vol:
-            self.volconv = VolConvBN(self.ny, self.nx, hidden_dim=vol_conv_hidden_dim, dim_output=output_channels)
-        else:
-            self.volconv = VolConv(self.ny, self.nx, hidden_dim=vol_conv_hidden_dim, dim_output=output_channels)
         
         if self.decoder == 'simple_decoder':
+            assert self.using_voting
             self.decoder = SimpleDecoder(dim_input=output_channels)
             print('simple decoder:', self.decoder)
         elif self.decoder == 'gru_decoder':
             self.decoder = GRUDecoder(pseudoimage_channels=output_channels)
             print('gru decoder:', self.decoder)
         elif self.decoder == 'decoder':
-            self.decoder = Decoder(dim_input= output_channels * 2 + input_channels*2, layer_size=decoder_layers)
-            print('decoder:', self.decoder)
+            if self.using_voting:
+                self.decoder = Decoder(dim_input= output_channels * 2 + input_channels * 2, layer_size=decoder_layers)
+                print('decoder:', self.decoder)
+            else:
+                self.decoder = Decoder(dim_input= output_channels + input_channels * 2, layer_size=decoder_layers)
+                print('decoder:', self.decoder)
         else:
             raise NotImplementedError(f"decoder {self.decoder} not implemented")
         
@@ -107,6 +81,44 @@ class SFVoxelModel(nn.Module):
                                 point_cloud_range=point_cloud_range,
                                 feat_channels=input_channels)
         
+        # Voting Module settings
+        if self.using_voting:
+            ## how many bins inside a voxel after quantization
+            ## assume 72km/h (20m/s), along x/y; 0.1m along z
+            e = 1e-8
+            radius = 2
+            nx = math.ceil((radius+e)*nframes / voxel_size[0])  
+            ny = math.ceil((radius+e)*nframes / voxel_size[1]) 
+            nz = math.ceil((0.1+e) / voxel_size[2])  # +/-0.1
+            
+            self.nx = nx*2 # +/-x
+            self.ny = ny*2 # +/-y
+            self.nz = nz*2 # +/-z
+            print('n x/y/z: ', self.nx, self.ny, self.nz)
+                    
+            self.nframes = nframes
+            self.m = m # m knn within src, for each src point
+            self.using_ball_query = use_ball_query
+            self.n = n # n knn between src and dst, for each src voxel
+            self.radius_dst = max(nx, ny) # define a search window for a src voxel in dst voxels for calculating translations
+
+            if self.using_ball_query:
+                self.radius_src = math.ceil(max((radius+e)/voxel_size[0], (radius+e)/voxel_size[1])) # define a search window (in meters) within src voxels, aka the rigid motion window
+                print(f'using ball query to search window radius in source pc: {self.radius_src}, m={self.m};')
+            else:
+                print(f'using knn to search window radius in source pc, m={self.m};')
+            print(f'using ball query to search in target pc, n={self.n}, search window radius: {self.radius_dst}.')
+            self.use_separate_feats = use_separate_feats_voting
+            print(f'using separate features for voting: {self.use_separate_feats}')
+
+            self.vote = HT_CUDA(self.ny, self.nx, self.nz)
+            
+            if use_bn_in_vol:
+                self.volconv = VolConvBN(self.ny, self.nx, hidden_dim=vol_conv_hidden_dim, dim_output=output_channels)
+            else:
+                self.volconv = VolConv(self.ny, self.nx, hidden_dim=vol_conv_hidden_dim, dim_output=output_channels)
+        
+
         self.timer = dztimer.Timing()
         self.timer.start("Total")
         
@@ -132,12 +144,15 @@ class SFVoxelModel(nn.Module):
 
         # unq_voxel_coords_src # [N_valid_voxels, 2]
         # point_voxel_idxs_src # [N_valid_pts], the index of the unique voxel for each point    
-        
-        dists_dst, knn_idxs_dst, _ = pytorch3d_ops.ball_query(unq_voxel_coords_src[None].float(), unq_voxel_coords_dst[None].float(), lengths1=None, lengths2=None, K=self.n, return_nn=False, radius=self.radius_dst)
-        if self.using_ball_query:
-            dists_src, knn_idxs_src, _ = pytorch3d_ops.ball_query(unq_voxel_coords_src[None].float(), unq_voxel_coords_src[None].float(), lengths1=None, lengths2=None, K=self.m, return_nn=False, radius=self.radius_src)
+        if self.using_voting:
+            dists_dst, knn_idxs_dst, _ = pytorch3d_ops.ball_query(unq_voxel_coords_src[None].float(), unq_voxel_coords_dst[None].float(), lengths1=None, lengths2=None, K=self.n, return_nn=False, radius=self.radius_dst)
+            if self.using_ball_query:
+                dists_src, knn_idxs_src, _ = pytorch3d_ops.ball_query(unq_voxel_coords_src[None].float(), unq_voxel_coords_src[None].float(), lengths1=None, lengths2=None, K=self.m, return_nn=False, radius=self.radius_src)
+            else:
+                dists_src, knn_idxs_src, _ = pytorch3d_ops.knn_points(unq_voxel_coords_src[None].float(), unq_voxel_coords_src[None].float(), lengths1=None, lengths2=None, K=self.m, return_nn=False, return_sorted=False)
         else:
-            dists_src, knn_idxs_src, _ = pytorch3d_ops.knn_points(unq_voxel_coords_src[None].float(), unq_voxel_coords_src[None].float(), lengths1=None, lengths2=None, K=self.m, return_nn=False, return_sorted=False)
+            knn_idxs_dst=[None]
+            knn_idxs_src=[None]
         # print('unq_voxel_coords_src:', unq_voxel_coords_src.shape) # [N_valid_voxels, 2]
         # print('knn_idxs_dst:', knn_idxs_dst.shape) # [1, N_valid_voxels, n], n=64,  the index of n nerest voxels in dst for each voxel in src
         # print('knn_idxs_src:', knn_idxs_src.shape) # [1, N_valid_voxels, m], m=8, the index of n nerest voxels in src for each voxel in src
@@ -190,30 +205,36 @@ class SFVoxelModel(nn.Module):
             in enumerate( zip(point_voxel_idxs_src, point_voxel_idxs_dst, point_offsets_src, unq_voxels_src, unq_voxels_dst, knn_idxs_src, knn_idxs_dst) ):
             unq_voxels_src_= pad_to_batch(unq_voxels_src_, l_voxels)
             unq_voxels_dst_ = pad_to_batch(unq_voxels_dst_, l_voxels)
-            knn_idxs_src_ = pad_to_batch(knn_idxs_src_, l_voxels)
-            knn_idxs_dst_= pad_to_batch(knn_idxs_dst_, l_voxels)
             point_voxel_idxs_src_= pad_to_batch(point_voxel_idxs_src_, l_points)
             point_voxel_idxs_dst_= pad_to_batch(point_voxel_idxs_dst_, l_points)
-            
             point_offsets_src_ = pad_to_batch(point_offsets_src_, l_points)
+            
+            knn_idxs_src_ = pad_to_batch(knn_idxs_src_, l_voxels)
+            knn_idxs_dst_= pad_to_batch(knn_idxs_dst_, l_voxels)
 
             unq_voxels_src[i] = unq_voxels_src_
             unq_voxels_dst[i] = unq_voxels_dst_
-            knn_idxs_src[i] = knn_idxs_src_
-            knn_idxs_dst[i] = knn_idxs_dst_
             point_voxel_idxs_src[i] = point_voxel_idxs_src_
             point_voxel_idxs_dst[i] = point_voxel_idxs_dst_
             point_offsets_src[i] = point_offsets_src_
             
+            knn_idxs_src[i] = knn_idxs_src_
+            knn_idxs_dst[i] = knn_idxs_dst_
+            
         unq_voxels_src = torch.stack(unq_voxels_src, dim=0)
         unq_voxels_dst = torch.stack(unq_voxels_dst, dim=0)
-        knn_idxs_src = torch.stack(knn_idxs_src, dim=0)
-        knn_idxs_dst = torch.stack(knn_idxs_dst, dim=0)
         point_voxel_idxs_src = torch.stack(point_voxel_idxs_src, dim=0)
         point_voxel_idxs_dst = torch.stack(point_voxel_idxs_dst, dim=0)
         point_offsets_src = torch.stack(point_offsets_src, dim=0)
         point_masks_src = torch.stack(point_masks_src, dim=0)
         point_masks_dst = torch.stack(point_masks_dst, dim=0)
+        
+        if self.using_voting:
+            knn_idxs_src = torch.stack(knn_idxs_src, dim=0)
+            knn_idxs_dst = torch.stack(knn_idxs_dst, dim=0)
+        else:
+            knn_idxs_src = None
+            knn_idxs_dst = None
 
         return point_masks_src, point_masks_dst, point_voxel_idxs_src, point_voxel_idxs_dst, point_offsets_src, unq_voxels_src, unq_voxels_dst, knn_idxs_src, knn_idxs_dst
     
@@ -260,6 +281,7 @@ class SFVoxelModel(nn.Module):
         # print('pseudoimages_src:', pseudoimages_src.shape)
         # print('pseudoimages_dst:', pseudoimages_dst.shape)
         
+
         self.timer[1][1].start("Preprocessing")
         with torch.no_grad():
             point_masks_src, point_masks_dst, \
@@ -271,14 +293,9 @@ class SFVoxelModel(nn.Module):
         
         self.timer[1][2].start("Feature extraction")
         pseudoimages_grid = self.backbone(pseudoimages_src, pseudoimages_dst)
-        if self.use_separate_feats:
-            # print('using separate features for voting')
-            feats_voxel_src = self.extract_voxel_from_image(pseudoimages_src, voxels_src) # [B, N_valid_voxels, C]
-            feats_voxel_dst = self.extract_voxel_from_image(pseudoimages_dst, voxels_dst) # [B, N_valid_voxels, C]
-        else:
-            feats_voxel_src = self.extract_voxel_from_image(pseudoimages_grid, voxels_src) # [B, N_valid_voxels, C]
-            feats_voxel_dst = self.extract_voxel_from_image(pseudoimages_grid, voxels_dst) # [B, N_valid_voxels, C]
-        
+
+        feats_point_src_init = self.extract_point_from_image(torch.cat([pseudoimages_src, pseudoimages_dst], dim=1), voxels_src, point_voxel_idxs_src)
+        feats_point_src_grid = self.extract_point_from_image(pseudoimages_grid,  voxels_src, point_voxel_idxs_src)
         # print('psudoimage src:', pseudoimages_src.shape)
         # print('psudoimage dst:', pseudoimages_dst.shape)
         # print('psudoimage grid:', pseudoimages_grid.shape)
@@ -288,83 +305,99 @@ class SFVoxelModel(nn.Module):
         
         self.timer[1][2].stop()
         
-        self.timer[1][3].start("Gathering")
-        feats_voxel_dst_inflate = batched_masked_gather(feats_voxel_dst, knn_idxs_dst.long(), knn_idxs_dst>=0, fill_value=0)
-        # print('feats_voxel_dst_inflate:', feats_voxel_dst_inflate.shape)
-        # print('math1:', (feats_voxel_src[:, :, None, :] * feats_voxel_dst_inflate).shape)
-        # corr_src_dst = (feats_voxel_src[:, :, None, :] * feats_voxel_dst_inflate).sum(dim=-1) # [b, l, self.n]
-        corr_src_dst = torch.nn.functional.cosine_similarity(feats_voxel_src[:, :, None, :], feats_voxel_dst_inflate, dim=-1)
-        # print('corr_src_dst:', corr_src_dst.shape, corr_src_dst.max(-1)[0].shape, corr_src_dst.min(-1)[0].shape) # (bs, num_voxels, n)
-        # print(corr_src_dst.max(-1)[0])
-        # print(corr_src_dst.min(-1)[0])
-        # print('corr_inflate:', corr_inflate.shape, corr_inflate[0, :10, 10:14, 100:104])
-        self.timer[1][3].stop()
-        
-        self.timer[1][4].start("Voting")
-        # print('corr_src_dst:', corr_src_dst.shape)
-        voting_vols= self.vote(corr_src_dst[:, :, :, None], voxels_src, voxels_dst, knn_idxs_src, knn_idxs_dst) # [b, l, c, ny, nx]
-        # print('voting  vols:', voting_vols.shape)
-        
-        # voting_vols_flatten = voting_vols.flatten(start_dim=-2)
-        # voting_vols_max = voting_vols_flatten.max(-1)[0]
-        # voting_vols_min = voting_vols_flatten.min(-1)[0]
-        # print('voting  vols flatten:', voting_vols_flatten.shape, voting_vols_max.shape, voting_vols_min.shape) 
-        
-        # voting_vols_norm = (voting_vols - voting_vols_min[..., None, None] )/ (voting_vols_max[..., None, None] - voting_vols_min[..., None, None] + 1e-6)
-        
-        # print(voting_vols_norm.shape, voting_vols_norm.max(), voting_vols_norm.min())
-        
-        # vols_flattened = vols.view(vols.shape[0], vols.shape[1], -1)
-        
-        # print('vols_flattened:', vols_flattened.shape, vols_flattened[0].max(), vols_flattened[0].min())
-        
-        # for vol in vols_flattened:
-        #     print('vol:', vol.shape, vol.max(), vol.min())
-        #     topk_voting, topk_idx = torch.topk(vol, 5, dim=-1)
-        #     print('topk voting:', topk_voting.shape, topk_voting.max(), topk_voting.min())
-        #     print('topk idx:', topk_idx.shape)
-        #     # gathered_vol = torch.gather(vol, dim =1, index = topk_idx)
-        #     # print('topk idx verfi:', gathered_vol.shape)
-        #     # print(torch.eq(gathered_vol, topk_voting).all())
-        #     print('topk voting values:', topk_voting[:10, :])
+        if self.using_voting:
+            self.timer[1][3].start("Gathering")
+            if self.use_separate_feats:
+            # print('using separate features for voting')
+                feats_voxel_src = self.extract_voxel_from_image(pseudoimages_src, voxels_src) # [B, N_valid_voxels, C]
+                feats_voxel_dst = self.extract_voxel_from_image(pseudoimages_dst, voxels_dst) # [B, N_valid_voxels, C]
+            else:
+                feats_voxel_src = self.extract_voxel_from_image(pseudoimages_grid, voxels_src) # [B, N_valid_voxels, C]
+                feats_voxel_dst = self.extract_voxel_from_image(pseudoimages_grid, voxels_dst) # [B, N_valid_voxels, C]
+            feats_voxel_dst_inflate = batched_masked_gather(feats_voxel_dst, knn_idxs_dst.long(), knn_idxs_dst>=0, fill_value=0)
+            # print('feats_voxel_dst_inflate:', feats_voxel_dst_inflate.shape)
+            # print('math1:', (feats_voxel_src[:, :, None, :] * feats_voxel_dst_inflate).shape)
+            # corr_src_dst = (feats_voxel_src[:, :, None, :] * feats_voxel_dst_inflate).sum(dim=-1) # [b, l, self.n]
+            corr_src_dst = torch.nn.functional.cosine_similarity(feats_voxel_src[:, :, None, :], feats_voxel_dst_inflate, dim=-1)
+            # print('corr_src_dst:', corr_src_dst.shape, corr_src_dst.max(-1)[0].shape, corr_src_dst.min(-1)[0].shape) # (bs, num_voxels, n)
+            # print(corr_src_dst.max(-1)[0])
+            # print(corr_src_dst.min(-1)[0])
+            # print('corr_inflate:', corr_inflate.shape, corr_inflate[0, :10, 10:14, 100:104])
+            self.timer[1][3].stop()
             
-        #     norm_topk_voting = topk_voting
-        
-        vols = self.volconv(voting_vols)
-        # print('voting  vols after volconv:', voting_vols.shape, vols.shape, vols.max(), vols.min())
-        self.timer[1][4].stop()
-        
-        self.timer[1][5].start("Decoding")
-        feats_point_vol = self.extract_point_from_voxel(vols, point_voxel_idxs_src)
-        feats_point_src_init = self.extract_point_from_image(torch.cat([pseudoimages_src, pseudoimages_dst], dim=1), voxels_src, point_voxel_idxs_src)
-        feats_point_src_grid = self.extract_point_from_image(pseudoimages_grid,  voxels_src, point_voxel_idxs_src)
-        
-        # print('feats_point_vol:', feats_point_vol.shape, feats_point_vol.max(), feats_point_vol.min())
-        # print('feats_point_src_init:', feats_point_src_init.shape, feats_point_src_init.max(), feats_point_src_init.min())
-        # print('feats_point_src_grid:', feats_point_src_grid.shape, feats_point_src_grid.max(), feats_point_src_grid.min())
-        
-        if self.decoder=='simple_decoder':
-            flows = self.decoder(feats_point_vol)
-        else: 
-            feats_cat = self.concat_feats(feats_point_vol, feats_point_src_init, feats_point_src_grid)
-            # print('feats_cat:', feats_cat.shape, feats_cat.max(), feats_cat.min())
-        # print('pseudoimages_src:', pseudoimages_src.shape)
-        # print('pseudoimages_dst:', pseudoimages_dst.shape)
-        # print('voxels_src:', voxels_src.shape)  
-        # print('point_voxel_idxs_src:', point_voxel_idxs_src.shape)
-        # print('point_voxel_idxs_src:', point_voxel_idxs_src.max(), point_voxel_idxs_src.min())
-        # print('feats_points_vol:', feats_point_vol.shape)
-        # print('feats_points_src_init:', feats_point_src_init.shape)
-        # print('feats_points_src_grid:', feats_point_src_grid.shape)
-        
-        # print('feats_cat:', feats_cat.shape)
-        # print('pts offsets:', len(voxel_infos_lst_src))
-        # for voxel_info in voxel_infos_lst_src:
-        #     print('voxel_info:', voxel_info['point_offsets'].shape)
-        # print('point_offsets_src:', point_offsets_src.shape)
-        
+            self.timer[1][4].start("Voting")
+            # print('corr_src_dst:', corr_src_dst.shape)
+            voting_vols= self.vote(corr_src_dst[:, :, :, None], voxels_src, voxels_dst, knn_idxs_src, knn_idxs_dst) # [b, l, c, ny, nx]
+            # print('voting  vols:', voting_vols.shape)
+            
+            # voting_vols_flatten = voting_vols.flatten(start_dim=-2)
+            # voting_vols_max = voting_vols_flatten.max(-1)[0]
+            # voting_vols_min = voting_vols_flatten.min(-1)[0]
+            # print('voting  vols flatten:', voting_vols_flatten.shape, voting_vols_max.shape, voting_vols_min.shape) 
+            
+            # voting_vols_norm = (voting_vols - voting_vols_min[..., None, None] )/ (voting_vols_max[..., None, None] - voting_vols_min[..., None, None] + 1e-6)
+            
+            # print(voting_vols_norm.shape, voting_vols_norm.max(), voting_vols_norm.min())
+            
+            # vols_flattened = vols.view(vols.shape[0], vols.shape[1], -1)
+            
+            # print('vols_flattened:', vols_flattened.shape, vols_flattened[0].max(), vols_flattened[0].min())
+            
+            # for vol in vols_flattened:
+            #     print('vol:', vol.shape, vol.max(), vol.min())
+            #     topk_voting, topk_idx = torch.topk(vol, 5, dim=-1)
+            #     print('topk voting:', topk_voting.shape, topk_voting.max(), topk_voting.min())
+            #     print('topk idx:', topk_idx.shape)
+            #     # gathered_vol = torch.gather(vol, dim =1, index = topk_idx)
+            #     # print('topk idx verfi:', gathered_vol.shape)
+            #     # print(torch.eq(gathered_vol, topk_voting).all())
+            #     print('topk voting values:', topk_voting[:10, :])
+                
+            #     norm_topk_voting = topk_voting
+            
+            vols = self.volconv(voting_vols)
+            feats_point_vol = self.extract_point_from_voxel(vols, point_voxel_idxs_src)
+            # print('voting  vols after volconv:', voting_vols.shape, vols.shape, vols.max(), vols.min())
+            self.timer[1][4].stop()
+            
+
+            
+            # print('feats_point_vol:', feats_point_vol.shape, feats_point_vol.max(), feats_point_vol.min())
+            # print('feats_point_src_init:', feats_point_src_init.shape, feats_point_src_init.max(), feats_point_src_init.min())
+            # print('feats_point_src_grid:', feats_point_src_grid.shape, feats_point_src_grid.max(), feats_point_src_grid.min())
+            self.timer[1][5].start("Decoding")
+            if self.decoder=='simple_decoder':
+                flows = self.decoder(feats_point_vol)
+            else: 
+                feats_cat = torch.cat([feats_point_vol, feats_point_src_init, feats_point_src_grid], -1)
+                # print('feats_cat:', feats_cat.shape, feats_cat.max(), feats_cat.min())
+            # print('pseudoimages_src:', pseudoimages_src.shape)
+            # print('pseudoimages_dst:', pseudoimages_dst.shape)
+            # print('voxels_src:', voxels_src.shape)  
+            # print('point_voxel_idxs_src:', point_voxel_idxs_src.shape)
+            # print('point_voxel_idxs_src:', point_voxel_idxs_src.max(), point_voxel_idxs_src.min())
+            # print('feats_points_vol:', feats_point_vol.shape)
+            # print('feats_points_src_init:', feats_point_src_init.shape)
+            # print('feats_points_src_grid:', feats_point_src_grid.shape)
+            
+            # print('feats_cat:', feats_cat.shape)
+            # print('pts offsets:', len(voxel_infos_lst_src))
+            # for voxel_info in voxel_infos_lst_src:
+            #     print('voxel_info:', voxel_info['point_offsets'].shape)
+            # print('point_offsets_src:', point_offsets_src.shape)
+            
+                flows = self.decoder(feats_cat, point_offsets_src)
+            self.timer[1][5].stop()
+        else:
+            feats_voxel_src = None
+            feats_voxel_dst = None
+            corr_src_dst = None
+            voting_vols = None
+
+            self.timer[1][5].start("Decoding")
+            feats_cat = torch.cat([feats_point_src_init, feats_point_src_grid], -1)
             flows = self.decoder(feats_cat, point_offsets_src)
-        self.timer[1][5].stop()
+            self.timer[1][5].stop()
         
         pc0_points_lst = [e["points"] for e in voxel_infos_lst_src]
         pc1_points_lst = [e["points"] for e in voxel_infos_lst_dst]

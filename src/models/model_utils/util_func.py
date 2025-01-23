@@ -88,6 +88,8 @@ def batched_masked_gather(x: torch.Tensor, idxs: torch.Tensor, mask: torch.Tenso
     return y
 
 def pad_to_batch(idxs, l):
+    if idxs is None:
+        return idxs
     if idxs.dim()==2:
         assert idxs.shape[0]<=l
         if idxs.shape[0]<l:

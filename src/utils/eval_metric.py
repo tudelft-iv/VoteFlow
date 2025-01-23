@@ -12,11 +12,23 @@
 
 import torch
 import os, sys
+from pathlib import Path
 import numpy as np
 from typing import Dict, Final, List, Tuple
 from tabulate import tabulate
+from collections import defaultdict
+
+from av2.structures.cuboid import CuboidList
+from av2.structures.sweep import Sweep
+from av2.datasets.sensor.av2_sensor_dataloader import convert_pose_dataframe_to_SE3
+from av2.map.map_api import ArgoverseStaticMap
+from av2.utils.io import read_feather
 
 BASE_DIR = os.path.abspath(os.path.join( os.path.dirname( __file__ ), '../..' ))
+BOUNDING_BOX_EXPANSION: Final = 0.2
+
+SIZE_BUCKET_BOUNDARIES = torch.tensor([1, 2.5, 4.5, 6, 9, 12])
+SIZE_CLASSES = ['T', 'XS', 'S', 'M', 'L', 'XL', 'U']
 sys.path.append(BASE_DIR)
 from src.utils.av2_eval import compute_metrics, compute_bucketed_epe, CLOSE_DISTANCE_THRESHOLD
 
@@ -46,6 +58,57 @@ def evaluate_leaderboard(est_flow, rigid_flow, pc0, gt_flow, is_valid, pts_ids):
         is_close.detach().cpu().numpy().astype(bool),
         is_valid.detach().cpu().numpy().astype(bool)
     )
+    return res_dict
+
+
+# EPE Three-way: Foreground Dynamic, Background Dynamic, Background Static
+# leaderboard link: https://eval.ai/web/challenges/challenge-page/2010/evaluation
+def evaluate_size_bucketed(est_flow, rigid_flow, pc0, gt_flow, is_valid, pts_ids, sample_dict):
+
+    scene_id = sample_dict['scene_id']
+    timestamp = sample_dict['timestamp']
+    eval_mask = sample_dict['eval_mask'].detach().cpu().numpy().astype(bool)
+    data_root = 'data/Argoverse2/sensor/val'
+    # Load 3D cuboid 
+    
+    annotation_feather_path = os.path.join(data_root, scene_id, 'annotations.feather')
+    cuboid_list_scene = CuboidList.from_feather(annotation_feather_path)
+    # res_dict = dict(
+    #     Static=[],
+    #     Dynamic=[]
+    # )
+    sweep = Sweep.from_feather(Path(data_root)/ scene_id / 'sensors'/ 'lidar'/ f'{timestamp}.feather')
+    pc0_ego = sweep.xyz
+    
+    res_dict = defaultdict(dict)
+    
+    for key in SIZE_CLASSES:
+        for sub_key in ['Static', 'Dynamic']:
+            res_dict[key][sub_key] = []
+    # print('timestamp:', type(timestamp))
+    for cuboid in cuboid_list_scene:
+        if cuboid.timestamp_ns == int(timestamp):
+
+            cuboid.length_m += BOUNDING_BOX_EXPANSION
+            cuboid.width_m += BOUNDING_BOX_EXPANSION
+            _, obj_mask = cuboid.compute_interior_points(pc0_ego)
+            obj_mask = obj_mask[eval_mask]
+            
+            est_flow_obj = est_flow[obj_mask] 
+            rigid_flow_obj = rigid_flow[obj_mask]
+            pc0_obj = pc0[obj_mask]
+            gt_flow_obj = gt_flow[obj_mask]
+            is_valid_obj = is_valid[obj_mask]
+            pts_ids_obj = pts_ids[obj_mask]
+            eval_dict = evaluate_leaderboard(est_flow_obj, rigid_flow_obj, pc0_obj, gt_flow_obj, is_valid_obj, pts_ids_obj)
+            # print(timestamp, 'FS:', eval_dict['EPE_FS'])
+            # print(timestamp, 'FD:', eval_dict['EPE_FD'])
+            class_id = np.digitize(cuboid.length_m, SIZE_BUCKET_BOUNDARIES, right=True)
+            class_name = SIZE_CLASSES[class_id]
+            
+            res_dict[class_name]['Static'].append(eval_dict['EPE_FS']) 
+            res_dict[class_name]['Dynamic'].append(eval_dict['EPE_FD'])
+    
     return res_dict
 
 # EPE Bucketed: BACKGROUND, CAR, PEDESTRIAN, WHEELED_VRU, OTHER_VEHICLES
@@ -189,7 +252,7 @@ class BucketResultMatrix:
         return OverallError(average_static_epe, average_dynamic_error)
 
 class OfficialMetrics:
-    def __init__(self):
+    def __init__(self, eval_size_bucketed=False):
         # same with BUCKETED_METACATAGORIES
         self.bucketed= {
             'BACKGROUND': {'Static': [], 'Dynamic': []},
@@ -207,6 +270,18 @@ class OfficialMetrics:
             'IoU': [],
             'Three-way': []
         }
+        
+        self.eval_size_bucketed = eval_size_bucketed
+        if self.eval_size_bucketed:
+            self.size_bucket_epe = {
+                'T': {'Static':[], 'Dynamic':[]}, # 0.0 - 1.0 m Pedestrians
+                'XS': {'Static':[], 'Dynamic':[]},  # 1.0 - 2.5 m Bicycles/e‐bikes, Standing scooters, wheelchairs, etc.
+                'S': {'Static':[], 'Dynamic':[]},   # 2.5 - 4.5 m Motorcycles (with riders), Small cars (hatchbacks, subcompacts, city cars)
+                'M': {'Static':[], 'Dynamic':[]},   # 4.5 - 6.0 m Sedans, SUVs, pickup trucks, Minivans
+                'L': {'Static':[], 'Dynamic':[]},   # 6.0 - 9.0 m: Small box trucks, Large vans (delivery vans, small shuttle vans)
+                'XL': {'Static':[], 'Dynamic':[]},  # 9.0 - 12.0 m: Standard city buses, Medium trucks (e.g., straight trucks, mid‐size box trucks)
+                'U': {'Static':[], 'Dynamic':[]},   # > 12.0 m: Tractor‐trailers (semi‐trucks), Articulated/tandem buses (if present)
+            }
 
         self.norm_flag = False
 
@@ -218,13 +293,19 @@ class OfficialMetrics:
             class_names=['BACKGROUND', 'CAR', 'OTHER_VEHICLES', 'PEDESTRIAN', 'WHEELED_VRU'],
             speed_buckets=speed_thresholds
         )
-    def step(self, epe_dict, bucket_dict):
+    def step(self, epe_dict, bucket_dict, size_bucket_dict):
         """
         This step function is used to store the results of **each frame**.
         """
         for key in epe_dict:
             self.epe_3way[key].append(epe_dict[key])
 
+        if self.eval_size_bucketed:
+            assert size_bucket_dict is not None
+            for key in size_bucket_dict:
+                self.size_bucket_epe[key]['Static'].extend(size_bucket_dict[key]['Static'])
+                self.size_bucket_epe[key]['Dynamic'].extend(size_bucket_dict[key]['Dynamic'])
+            
         for item_ in bucket_dict:
             if item_.count == 0:
                 continue
@@ -245,7 +326,12 @@ class OfficialMetrics:
         for key in self.epe_3way:
             self.epe_3way[key] = np.mean(self.epe_3way[key])
         self.epe_3way['Three-way'] = np.mean([self.epe_3way['EPE_FD'], self.epe_3way['EPE_BS'], self.epe_3way['EPE_FS']])
-
+        
+        if self.eval_size_bucketed:
+            for key in self.size_bucket_epe:
+                self.size_bucket_epe[key]['Static'] = np.mean(self.size_bucket_epe[key]['Static'])
+                self.size_bucket_epe[key]['Dynamic'] = np.mean(self.size_bucket_epe[key]['Dynamic'])
+            
         mean = self.bucketedMatrix.get_mean_average_values(normalized=True).to_tuple()
         class_errors = self.bucketedMatrix.get_overall_class_errors(normalized=True)
         for key in self.bucketed:
@@ -271,4 +357,22 @@ class OfficialMetrics:
             printed_data.append([key, self.bucketed[key]['Static'], self.bucketed[key]['Dynamic']])
         print("Version 2 Metric on Category-based:")
         print(tabulate(printed_data, headers=["Class", "Static", "Dynamic"], tablefmt='orgtbl'), "\n")
-    
+        
+        if self.eval_size_bucketed:
+            printed_data = []
+            for key in self.size_bucket_epe:
+                printed_data.append([key,  np.round(self.size_bucket_epe[key]['Dynamic'], 6), np.round(self.size_bucket_epe[key]['Static'], 6),])
+            print('FD and FS Metric on Size Bucketed:')
+            print(tabulate(printed_data, headers=["Class", "Dynamic", "Static"], tablefmt='orgtbl'), "\n")
+
+            metric_description =[
+                ['T',  '(0.0 - 1.0] m', 'Pedestrians'],
+                [ 'XS', '(1.0 - 2.5] m', 'Bicycles/e‐bikes, Standing scooters, wheelchairs, etc.'],
+                ['S',  '(2.5 - 4.5] m', 'Motorcycles (with riders), Small cars (hatchbacks, subcompacts, city cars)'],
+                ['M',  '(4.5 - 6.0] m', 'Sedans, SUVs, pickup trucks, Minivans'],
+                ['L',  '(6.0 - 9.0] m', 'Small box trucks, Large vans (delivery vans, small shuttle vans)'],
+                ['XL', '(9.0 - 12.0] m', 'Standard city buses, Medium trucks (e.g., straight trucks, mid‐size box trucks)'],
+                ['U',  '(> 12.0 m', 'Tractor‐trailers (semi‐trucks), Articulated/tandem buses (if present)'],
+            ]
+            print('Size Bucketed Metric Description:')
+            print(tabulate(metric_description, headers=["Class", "Range", "Description"], tablefmt='orgtbl'), "\n")
