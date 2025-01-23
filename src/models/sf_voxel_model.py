@@ -33,6 +33,7 @@ class SFVoxelModel(nn.Module):
                  decoder_layers=1,
                  use_bn_in_vol=False,
                  use_ball_query=False,
+                 use_separate_feats_voting=False,
                  vol_conv_hidden_dim=16,
                  **kwargs):
         super().__init__()
@@ -70,9 +71,12 @@ class SFVoxelModel(nn.Module):
 
         if self.using_ball_query:
             self.radius_src = math.ceil(max((radius+e)/voxel_size[0], (radius+e)/voxel_size[1])) # define a search window (in meters) within src voxels, aka the rigid motion window
-            print(f'using ball query, search window radius in source pc: {self.radius_src}, m={self.m}, n={self.n}')
+            print(f'using ball query to search window radius in source pc: {self.radius_src}, m={self.m};')
         else:
-            print(f'using knn, m={self.m}, n={self.n}')
+            print(f'using knn to search window radius in source pc, m={self.m};')
+        print(f'using ball query to search in target pc, n={self.n}.')
+        self.use_separate_feats = use_separate_feats_voting
+        print(f'using separate features for voting: {self.use_separate_feats}')
         self.point_cloud_range = point_cloud_range
         self.voxel_size = voxel_size
         self.pseudo_image_dims = pseudo_image_dims
@@ -267,9 +271,17 @@ class SFVoxelModel(nn.Module):
         
         self.timer[1][2].start("Feature extraction")
         pseudoimages_grid = self.backbone(pseudoimages_src, pseudoimages_dst)
-        feats_voxel_src = self.extract_voxel_from_image(pseudoimages_grid, voxels_src) # [B, N_valid_voxels, C]
-        feats_voxel_dst = self.extract_voxel_from_image(pseudoimages_grid, voxels_dst) # [B, N_valid_voxels, C]
+        if self.use_separate_feats:
+            # print('using separate features for voting')
+            feats_voxel_src = self.extract_voxel_from_image(pseudoimages_src, voxels_src) # [B, N_valid_voxels, C]
+            feats_voxel_dst = self.extract_voxel_from_image(pseudoimages_dst, voxels_dst) # [B, N_valid_voxels, C]
+        else:
+            feats_voxel_src = self.extract_voxel_from_image(pseudoimages_grid, voxels_src) # [B, N_valid_voxels, C]
+            feats_voxel_dst = self.extract_voxel_from_image(pseudoimages_grid, voxels_dst) # [B, N_valid_voxels, C]
         
+        # print('psudoimage src:', pseudoimages_src.shape)
+        # print('psudoimage dst:', pseudoimages_dst.shape)
+        # print('psudoimage grid:', pseudoimages_grid.shape)
         # print('unique_voxels', voxels_src.shape)
         # print('feats_voxel_src:', feats_voxel_src.shape)
         # print('feats_voxel_dst:', feats_voxel_dst.shape)

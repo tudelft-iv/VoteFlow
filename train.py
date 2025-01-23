@@ -19,6 +19,7 @@ from lightning.pytorch.callbacks import (
     LearningRateMonitor,
     ModelCheckpoint
 )
+from lightning.pytorch.strategies import DDPStrategy
 
 from omegaconf import DictConfig, OmegaConf, ListConfig
 import hydra, wandb, os, math
@@ -63,6 +64,7 @@ def main(cfg):
     if cfg.use_demo_data:
         cfg.train_data = 'data/Argoverse2_demo/preprocess_v2/sensor/train'
         cfg.val_data = 'data/Argoverse2_demo/preprocess_v2/sensor/val'
+        cfg.wandb_mode = 'disabled'
     print('Train dataset path', cfg.train_data)
     print('Val dataset path', cfg.val_data)
     train_dataset = HDF5Dataset(cfg.train_data, n_frames=cfg.num_frames, dufo=(cfg.loss_fn in ['seflowLoss', 'seflowchamferLoss']))
@@ -125,7 +127,6 @@ def main(cfg):
     else:
         # check local tensorboard logging: tensorboard --logdir logs/jobs/{log folder}
         logger = TensorBoardLogger(save_dir=output_dir, name="logs")
-            
     trainer = pl.Trainer(logger=logger,
                          log_every_n_steps=50,
                          accelerator="gpu",
