@@ -12,7 +12,7 @@ from .basic.decoder import LinearDecoder
 from .basic import cal_pose0to1
 
 from .ht.ht_cuda import HT_CUDA
-from .model_utils.util_model import Backbone, VolConv, VolConvBN, Decoder, FastFlow3DUNet, SimpleDecoder, GRUDecoder
+from .model_utils.util_model import Backbone, VolConv, VolConvBN, Decoder, FastFlow3DUNet, SimpleDecoder, GRUDecoder, FastFlow3DDecoder
 from .model_utils.util_func import float_division, tensor_mem_size, calculate_unq_voxels, batched_masked_gather, pad_to_batch
 
 import warnings
@@ -73,6 +73,13 @@ class SFVoxelModel(nn.Module):
             else:
                 self.decoder = Decoder(dim_input= output_channels + input_channels * 2, layer_size=decoder_layers)
                 print('decoder:', self.decoder)
+        elif self.decoder == 'ff3d_decoder':
+            if self.using_voting:
+                self.decoder = FastFlow3DDecoder(dim_input= output_channels * 2 + input_channels*2)
+                print('FastFlow3D decoder:', self.decoder)
+            else: 
+                self.decoder = FastFlow3DDecoder(dim_input= output_channels + input_channels*2)
+                print('FastFlow3D decoder:', self.decoder)
         else:
             raise NotImplementedError(f"decoder {self.decoder} not implemented")
         
