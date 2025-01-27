@@ -330,8 +330,15 @@ class ModelWrapper(LightningModule):
 
         # NOTE (Qingwen): Since val and test, we will force set batch_size = 1 
         batch = {key: batch[key][0] for key in batch if len(batch[key])>0}
-        res_dict = {key: res_dict[key][0] for key in res_dict if len(res_dict[key])>0}
-        return batch, res_dict
+        # res_dict = {key: res_dict[key][0] for key in res_dict if len(res_dict[key])>0}
+        res_dict_re = dict()
+        for key in res_dict.keys():
+            if isinstance(res_dict[key], list):
+                if len(res_dict[key]) > 0:
+                    res_dict_re[key] = res_dict[key][0]
+            else:
+                res_dict_re[key] = res_dict[key]
+        return batch, res_dict_re
     
     def validation_step(self, batch, batch_idx):
         if self.av2_mode == 'val' or self.av2_mode == 'test':
