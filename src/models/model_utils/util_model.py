@@ -165,12 +165,15 @@ class Decoder(nn.Module):
         return x
 
 class GRUDecoder(nn.Module):
-    def __init__(self, pseudoimage_channels=16, num_iters=4):
+    def __init__(self, pseudoimage_channels=16, num_iters=4, using_voting=True):
         super().__init__()
         self.offset_encoder = nn.Linear(3, pseudoimage_channels)
 
-        self.proj_head = nn.Sequential(nn.Linear(pseudoimage_channels * 3, pseudoimage_channels * 2),
+        if using_voting:
+            self.proj_head = nn.Sequential(nn.Linear(pseudoimage_channels * 3, pseudoimage_channels * 2),
                                        nn.ReLU())
+        else:
+            self.proj_head = nn.Identity(),
 
         self.gru = ConvGRU(input_dim=pseudoimage_channels, hidden_dim=pseudoimage_channels*2)
 

@@ -64,7 +64,7 @@ class SFVoxelModel(nn.Module):
             self.decoder = SimpleDecoder(dim_input=output_channels)
             print('simple decoder:', self.decoder)
         elif self.decoder == 'gru_decoder':
-            self.decoder = GRUDecoder(pseudoimage_channels=output_channels)
+            self.decoder = GRUDecoder(pseudoimage_channels=output_channels, using_voting=self.using_voting)
             print('gru decoder:', self.decoder)
         elif self.decoder == 'decoder':
             if self.using_voting:
