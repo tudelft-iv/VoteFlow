@@ -73,7 +73,16 @@ def collate_fn_pad(batch):
 
     return res_dict
 class HDF5Dataset(Dataset):
-    def __init__(self, directory, n_frames=2, dufo=False, eval = False, eval_per_scene=False, scene_id=None, leaderboard_version=1):
+    def __init__(self,
+                 directory,
+                 n_frames=2,
+                 dufo=False,
+                 eval = False,
+                 eval_per_scene=False,
+                 scene_id=None,
+                 leaderboard_version=1,
+                 using_pwpp_gm=False
+                 ):
         '''
         directory: the directory of the dataset
         n_frames: the number of frames we use, default is 2: current, next if more then it's the history from current.
@@ -89,6 +98,10 @@ class HDF5Dataset(Dataset):
         self.eval_index = False
         self.dufo = dufo
         self.n_frames = n_frames
+        self.using_pwpp_gm = using_pwpp_gm
+
+        data_path = self.directory.split('/')[:2]
+        self.pwpp_gm_path = os.path.join(*data_path, 'patchworkpp_gm')
 
         if eval:
             eval_index_file = os.path.join(self.directory, 'index_eval.pkl')
@@ -151,12 +164,21 @@ class HDF5Dataset(Dataset):
         key = str(timestamp)
         with h5py.File(os.path.join(self.directory, f'{scene_id}.h5'), 'r') as f:
             pc0 = torch.tensor(f[key]['lidar'][:][:,:3])
-            gm0 = torch.tensor(f[key]['ground_mask'][:])
+            if self.using_pwpp_gm:
+                with h5py.File(os.path.join(self.pwpp_gm_path, f'{scene_id}.h5'), 'r') as f:
+                    gm0 = torch.tensor(f[key]['patchworkpp_gm'][:])
+            else:
+                gm0 = torch.tensor(f[key]['ground_mask'][:])
             pose0 = torch.tensor(f[key]['pose'][:])
 
             next_timestamp = str(self.data_index[index_+1][1])
             pc1 = torch.tensor(f[next_timestamp]['lidar'][:][:,:3])
-            gm1 = torch.tensor(f[next_timestamp]['ground_mask'][:])
+            if self.using_pwpp_gm:
+                with h5py.File(os.path.join(self.pwpp_gm_path, f'{scene_id}.h5'), 'r') as f:
+                    gm1 = torch.tensor(f[next_timestamp]['patchworkpp_gm'][:])
+            else:
+                gm1 = torch.tensor(f[next_timestamp]['ground_mask'][:])
+            # gm1 = torch.tensor(f[next_timestamp]['ground_mask'][:])
             pose1 = torch.tensor(f[next_timestamp]['pose'][:])
             res_dict = {
                 'scene_id': scene_id,
