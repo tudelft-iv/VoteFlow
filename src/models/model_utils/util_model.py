@@ -170,10 +170,9 @@ class GRUDecoder(nn.Module):
         self.offset_encoder = nn.Linear(3, pseudoimage_channels)
 
         if using_voting:
-            self.proj_head = nn.Sequential(nn.Linear(pseudoimage_channels * 3, pseudoimage_channels * 2),
-                                       nn.ReLU())
+            self.proj_head = nn.Sequential(nn.Linear(pseudoimage_channels * 3, pseudoimage_channels * 2),nn.ReLU())
         else:
-            self.proj_head = nn.Identity(),
+            self.proj_head = nn.Sequential(nn.Identity())
 
         self.gru = ConvGRU(input_dim=pseudoimage_channels, hidden_dim=pseudoimage_channels*2)
 
