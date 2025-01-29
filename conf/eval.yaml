@@ -9,6 +9,7 @@ supervised_flag: True # [True, False], whether you use any label from the datase
 with_trainval: False # [True, False], whether you use the trainval for eval
 using_pwpp_gm: False
 with_size_bucket_eval: False
+use_demo_data: False
 
 # no need to change
 slurm_id: 00000

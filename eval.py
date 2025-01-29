@@ -34,6 +34,10 @@ def main(cfg):
     pl.seed_everything(cfg.seed, workers=True)
     output_dir = HydraConfig.get().runtime.output_dir
     
+    if cfg.use_demo_data:
+        cfg.dataset_path = 'data/Argoverse2_demo/preprocess_v2/sensor'
+        cfg.wandb_mode = 'disabled'
+        
     if not os.path.exists(cfg.checkpoint):
         print(f"Checkpoint {cfg.checkpoint} does not exist. Need checkpoints for evaluation.")
         sys.exit(1)
