@@ -110,7 +110,6 @@ class VolConvBN(nn.Module):
         return x.view(b, l, -1)
 
 class FastFlow3DDecoder(nn.Module):
-
     def __init__(self, dim_input: int = 192):
         super().__init__()
 
@@ -127,6 +126,34 @@ class FastFlow3DDecoder(nn.Module):
             pts_offsets: torch.Tensor,
             ):
         pts_offsets_feats = self.offset_encoder(pts_offsets)
+        x = torch.cat([x, pts_offsets_feats], dim=-1)
+        x = self.decoder(x)
+
+        return x
+
+class FastFlow3DDecoderWithProjHead(nn.Module):
+    def __init__(self, using_voting=True, pseudoimage_channels=64):
+        super().__init__()
+
+        offset_encoder_channels = pseudoimage_channels*2
+        self.offset_encoder = nn.Linear(3, offset_encoder_channels)
+
+        if using_voting:
+            self.proj_head = nn.Sequential(nn.Linear(pseudoimage_channels * 3, pseudoimage_channels * 2),nn.ReLU())
+        else:
+            self.proj_head = nn.Sequential(nn.Identity())
+            
+        self.decoder = nn.Sequential(
+            nn.Linear(pseudoimage_channels * 4 , 32), nn.GELU(),
+            nn.Linear(32, 3))
+
+    def forward(
+            self, 
+            x: torch.Tensor, # concatenation of pts_feats_before, pts_feats_after and volfeats (B, N, 64 * 3)
+            pts_offsets: torch.Tensor,
+            ):
+        pts_offsets_feats = self.offset_encoder(pts_offsets)
+        x = self.proj_head(x)
         x = torch.cat([x, pts_offsets_feats], dim=-1)
         x = self.decoder(x)
 

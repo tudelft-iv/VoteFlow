@@ -12,7 +12,7 @@ from .basic.decoder import LinearDecoder
 from .basic import cal_pose0to1
 
 from .ht.ht_cuda import HT_CUDA
-from .model_utils.util_model import Backbone, VolConv, VolConvBN, Decoder, FastFlow3DUNet, SimpleDecoder, GRUDecoder, FastFlow3DDecoder
+from .model_utils.util_model import Backbone, VolConv, VolConvBN, Decoder, FastFlow3DUNet, SimpleDecoder, GRUDecoder, FastFlow3DDecoder, FastFlow3DDecoderWithProjHead
 from .model_utils.util_func import float_division, tensor_mem_size, calculate_unq_voxels, batched_masked_gather, pad_to_batch
 
 import warnings
@@ -66,6 +66,9 @@ class SFVoxelModel(nn.Module):
         elif self.decoder == 'gru_decoder':
             self.decoder = GRUDecoder(pseudoimage_channels=output_channels, using_voting=self.using_voting)
             print('gru decoder:', self.decoder)
+        elif self.decoder == 'ff3d_decoder_proj':
+            self.decoder = FastFlow3DDecoderWithProjHead(pseudoimage_channels=output_channels, using_voting=self.using_voting)
+            print('ff3d decoder with projection head:', self.decoder)
         elif self.decoder == 'decoder':
             if self.using_voting:
                 self.decoder = Decoder(dim_input= output_channels * 2 + input_channels * 2, layer_size=decoder_layers)
