@@ -99,8 +99,8 @@ class HDF5Dataset(Dataset):
         self.dufo = dufo
         self.n_frames = n_frames
         self.using_pwpp_gm = using_pwpp_gm
-
-        data_path = self.directory.split('/')[:2]
+        print('Using Patchwork++ ground mask:', self.using_pwpp_gm)
+        data_path = self.directory.split('/')[:3]
         self.pwpp_gm_path = os.path.join(*data_path, 'patchworkpp_gm')
 
         if eval:
@@ -165,8 +165,8 @@ class HDF5Dataset(Dataset):
         with h5py.File(os.path.join(self.directory, f'{scene_id}.h5'), 'r') as f:
             pc0 = torch.tensor(f[key]['lidar'][:][:,:3])
             if self.using_pwpp_gm:
-                with h5py.File(os.path.join(self.pwpp_gm_path, f'{scene_id}.h5'), 'r') as f:
-                    gm0 = torch.tensor(f[key]['patchworkpp_gm'][:])
+                with h5py.File(os.path.join(self.pwpp_gm_path, f'{scene_id}.h5'), 'r') as f0:
+                    gm0 = torch.tensor(f0[key]['patchworkpp_gm'][:]).squeeze(-1)
             else:
                 gm0 = torch.tensor(f[key]['ground_mask'][:])
             pose0 = torch.tensor(f[key]['pose'][:])
@@ -174,8 +174,8 @@ class HDF5Dataset(Dataset):
             next_timestamp = str(self.data_index[index_+1][1])
             pc1 = torch.tensor(f[next_timestamp]['lidar'][:][:,:3])
             if self.using_pwpp_gm:
-                with h5py.File(os.path.join(self.pwpp_gm_path, f'{scene_id}.h5'), 'r') as f:
-                    gm1 = torch.tensor(f[next_timestamp]['patchworkpp_gm'][:])
+                with h5py.File(os.path.join(self.pwpp_gm_path, f'{scene_id}.h5'), 'r') as f1:
+                    gm1 = torch.tensor(f1[next_timestamp]['patchworkpp_gm'][:]).squeeze(-1)
             else:
                 gm1 = torch.tensor(f[next_timestamp]['ground_mask'][:])
             # gm1 = torch.tensor(f[next_timestamp]['ground_mask'][:])

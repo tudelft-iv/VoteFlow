@@ -82,6 +82,7 @@ def main(cfg):
         HDF5Dataset(cfg.dataset_path + f"/{cfg.av2_mode}", 
                 n_frames=checkpoint_params.cfg.num_frames  if 'num_frames' in checkpoint_params.cfg else 2,
                 eval=True,
+                using_pwpp_gm=cfg.using_pwpp_gm,
                 leaderboard_version=cfg.leaderboard_version),
         batch_size=1,
         # collate_fn=collate_fn_pad,
