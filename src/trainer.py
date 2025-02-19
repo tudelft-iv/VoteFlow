@@ -234,6 +234,8 @@ class ModelWrapper(LightningModule):
             for key in self.metrics.size_bucket_epe:
                 self.log(f"val/size_metric/{key}/Static", self.metrics.size_bucket_epe[key]['Static'], sync_dist=True)
                 self.log(f"val/size_metric/{key}/Dynamic", self.metrics.size_bucket_epe[key]['Dynamic'], sync_dist=True)
+                self.log(f"val/size_metric/{key}/Number", self.metrics.size_bucket_epe[key]['num'], sync_dist=True)
+
         
         self.metrics.print()
 

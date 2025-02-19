@@ -36,7 +36,7 @@ def main(cfg):
     
     if cfg.use_demo_data:
         cfg.dataset_path = 'data/Argoverse2_demo/preprocess_v2/sensor'
-        cfg.wandb_mode = 'disabled'
+        cfg.wandb_mode = 'offline'
         
     if not os.path.exists(cfg.checkpoint):
         print(f"Checkpoint {cfg.checkpoint} does not exist. Need checkpoints for evaluation.")
@@ -59,7 +59,8 @@ def main(cfg):
     wandb_logger = WandbLogger(save_dir=output_dir,
                                project=f"{cfg.wandb_project_name}", 
                                name=f"{cfg.output}",
-                               offline=(cfg.wandb_mode == "offline"))
+                               offline=(cfg.wandb_mode == "offline"),
+                               log_model=(True if cfg.wandb_mode == 'online' else False))
     # print(type(cfg.gpus))
     if isinstance(cfg.gpus, ListConfig):
         assert len(cfg.gpus) == 1, "Only support single GPU for evaluation."

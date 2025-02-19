@@ -85,6 +85,7 @@ def evaluate_size_bucketed(est_flow, rigid_flow, pc0, gt_flow, is_valid, pts_ids
     for key in SIZE_CLASSES:
         for sub_key in ['Static', 'Dynamic']:
             res_dict[key][sub_key] = []
+        res_dict[key]['num'] = 0
     # print('timestamp:', type(timestamp))
     for cuboid in cuboid_list_scene:
         if cuboid.timestamp_ns == int(timestamp):
@@ -92,8 +93,13 @@ def evaluate_size_bucketed(est_flow, rigid_flow, pc0, gt_flow, is_valid, pts_ids
             cuboid.length_m += BOUNDING_BOX_EXPANSION
             cuboid.width_m += BOUNDING_BOX_EXPANSION
             _, obj_mask = cuboid.compute_interior_points(pc0_ego)
+            # print('***')
+            # print('obj mask before:', obj_mask.shape, obj_mask.sum())
             obj_mask = obj_mask[eval_mask]
-            
+            # print('eval mask:', eval_mask.shape, eval_mask.sum())
+            # print('obj mask after:', obj_mask.shape, obj_mask.sum())
+            if obj_mask.sum() == 0:
+                continue
             est_flow_obj = est_flow[obj_mask] 
             rigid_flow_obj = rigid_flow[obj_mask]
             pc0_obj = pc0[obj_mask]
@@ -105,10 +111,25 @@ def evaluate_size_bucketed(est_flow, rigid_flow, pc0, gt_flow, is_valid, pts_ids
             # print(timestamp, 'FD:', eval_dict['EPE_FD'])
             class_id = np.digitize(cuboid.length_m, SIZE_BUCKET_BOUNDARIES, right=True)
             class_name = SIZE_CLASSES[class_id]
-            
-            res_dict[class_name]['Static'].append(eval_dict['EPE_FS']) 
-            res_dict[class_name]['Dynamic'].append(eval_dict['EPE_FD'])
-    
+            # print('***')
+            # if eval_dict['EPE_FS'] != 0 and eval_dict['EPE_FD'] != 0:
+            #     print(f'{timestamp}, FS: {eval_dict["EPE_FS"]}, FD: {eval_dict["EPE_FD"]}.')
+            # assert not (eval_dict['EPE_FS'] == 0 and eval_dict['EPE_FD'] == 0) 
+            if eval_dict['EPE_FS'] != 0:
+                res_dict[class_name]['Static'].append(eval_dict['EPE_FS']) 
+            if eval_dict['EPE_FD'] != 0:
+                res_dict[class_name]['Dynamic'].append(eval_dict['EPE_FD'])
+            if (eval_dict['EPE_FS'] == 0) and (eval_dict['EPE_FD'] == 0):
+                gt_is_dynamic = torch.linalg.vector_norm(gt_flow_obj - rigid_flow_obj, dim=-1) >= 0.05
+                # print('GT dynamic:', gt_is_dynamic, gt_is_dynamic.all())
+                if gt_is_dynamic.all():
+                    res_dict[class_name]['Dynamic'].append(eval_dict['EPE_FD'])
+                else:
+                    res_dict[class_name]['Static'].append(eval_dict['EPE_FS']) 
+                
+            #if (eval_dict['EPE_FS'] != 0) and (eval_dict['EPE_FD'] != 0):
+                #print(f'{timestamp}, FS: {eval_dict["EPE_FS"]}, FD: {eval_dict["EPE_FD"]}.')
+            res_dict[class_name]['num'] += 1
     return res_dict
 
 # EPE Bucketed: BACKGROUND, CAR, PEDESTRIAN, WHEELED_VRU, OTHER_VEHICLES
@@ -274,13 +295,13 @@ class OfficialMetrics:
         self.eval_size_bucketed = eval_size_bucketed
         if self.eval_size_bucketed:
             self.size_bucket_epe = {
-                'T': {'Static':[], 'Dynamic':[]}, # 0.0 - 1.0 m Pedestrians
-                'XS': {'Static':[], 'Dynamic':[]},  # 1.0 - 2.5 m Bicycles/e‐bikes, Standing scooters, wheelchairs, etc.
-                'S': {'Static':[], 'Dynamic':[]},   # 2.5 - 4.5 m Motorcycles (with riders), Small cars (hatchbacks, subcompacts, city cars)
-                'M': {'Static':[], 'Dynamic':[]},   # 4.5 - 6.0 m Sedans, SUVs, pickup trucks, Minivans
-                'L': {'Static':[], 'Dynamic':[]},   # 6.0 - 9.0 m: Small box trucks, Large vans (delivery vans, small shuttle vans)
-                'XL': {'Static':[], 'Dynamic':[]},  # 9.0 - 12.0 m: Standard city buses, Medium trucks (e.g., straight trucks, mid‐size box trucks)
-                'U': {'Static':[], 'Dynamic':[]},   # > 12.0 m: Tractor‐trailers (semi‐trucks), Articulated/tandem buses (if present)
+                'T': {'Static':[], 'Dynamic':[], 'num': 0}, # 0.0 - 1.0 m Pedestrians
+                'XS': {'Static':[], 'Dynamic':[], 'num': 0},  # 1.0 - 2.5 m Bicycles/e‐bikes, Standing scooters, wheelchairs, etc.
+                'S': {'Static':[], 'Dynamic':[], 'num': 0},   # 2.5 - 4.5 m Motorcycles (with riders), Small cars (hatchbacks, subcompacts, city cars)
+                'M': {'Static':[], 'Dynamic':[], 'num': 0},   # 4.5 - 6.0 m Sedans, SUVs, pickup trucks, Minivans
+                'L': {'Static':[], 'Dynamic':[], 'num': 0},   # 6.0 - 9.0 m: Small box trucks, Large vans (delivery vans, small shuttle vans)
+                'XL': {'Static':[], 'Dynamic':[], 'num': 0},  # 9.0 - 12.0 m: Standard city buses, Medium trucks (e.g., straight trucks, mid‐size box trucks)
+                'U': {'Static':[], 'Dynamic':[], 'num': 0},   # > 12.0 m: Tractor‐trailers (semi‐trucks), Articulated/tandem buses (if present)
             }
 
         self.norm_flag = False
@@ -305,7 +326,8 @@ class OfficialMetrics:
             for key in size_bucket_dict:
                 self.size_bucket_epe[key]['Static'].extend(size_bucket_dict[key]['Static'])
                 self.size_bucket_epe[key]['Dynamic'].extend(size_bucket_dict[key]['Dynamic'])
-            
+                self.size_bucket_epe[key]['num'] += size_bucket_dict[key]['num']
+                
         for item_ in bucket_dict:
             if item_.count == 0:
                 continue
@@ -356,18 +378,18 @@ class OfficialMetrics:
         for key in self.bucketed:
             printed_data.append([key, self.bucketed[key]['Static'], self.bucketed[key]['Dynamic']])
         print("Version 2 Metric on Category-based:")
-        print(tabulate(printed_data, headers=["Class", "Static", "Dynamic"], tablefmt='orgtbl'), "\n")
+        print(tabulate(printed_data, headers=["Class", "Static", "Dynamic", "Number"], tablefmt='orgtbl'), "\n")
         
         if self.eval_size_bucketed:
             printed_data = []
             for key in self.size_bucket_epe:
-                printed_data.append([key,  np.round(self.size_bucket_epe[key]['Dynamic'], 6), np.round(self.size_bucket_epe[key]['Static'], 6),])
+                printed_data.append([key,  np.round(self.size_bucket_epe[key]['Dynamic'], 6), np.round(self.size_bucket_epe[key]['Static'], 6), self.size_bucket_epe[key]['num']])
             print('FD and FS Metric on Size Bucketed:')
-            print(tabulate(printed_data, headers=["Class", "Dynamic", "Static"], tablefmt='orgtbl'), "\n")
+            print(tabulate(printed_data, headers=["Class", "Dynamic", "Static", "Number"], tablefmt='orgtbl'), "\n")
 
             metric_description =[
                 ['T',  '(0.0 - 1.0] m', 'Pedestrians'],
-                [ 'XS', '(1.0 - 2.5] m', 'Bicycles/e‐bikes, Standing scooters, wheelchairs, etc.'],
+                ['XS', '(1.0 - 2.5] m', 'Bicycles/e‐bikes, Standing scooters, wheelchairs, etc.'],
                 ['S',  '(2.5 - 4.5] m', 'Motorcycles (with riders), Small cars (hatchbacks, subcompacts, city cars)'],
                 ['M',  '(4.5 - 6.0] m', 'Sedans, SUVs, pickup trucks, Minivans'],
                 ['L',  '(6.0 - 9.0] m', 'Small box trucks, Large vans (delivery vans, small shuttle vans)'],
