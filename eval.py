@@ -70,20 +70,16 @@ def main(cfg):
     # print(cfg.gpus)
     trainer = pl.Trainer(logger=wandb_logger, devices=cfg.gpus)
     # NOTE(Qingwen): search & check: def eval_only_step_(self, batch, res_dict)
-    
-
-    print(cfg.dataset_path)
-    
-    val_loader = DataLoader(
-        HDF5Dataset(cfg.dataset_path + f"/{cfg.av2_mode}", #"/val", 
-                    n_frames=checkpoint_params.cfg.num_frames  if 'num_frames' in checkpoint_params.cfg else 2,
-                    ),
-        batch_size=1,
-        shuffle=False,
-    collate_fn=collate_fn_pad,
-    pin_memory=True)
-
-    eval_loader = DataLoader(
+        
+    print(f"---LOG[eval]: Start evaluation on {cfg.dataset_path}/{cfg.av2_mode}.")
+    if 'waymo' in cfg.dataset_path:
+        cfg.with_trainval  = True
+        print(f"---LOG[eval]: Eval on waymo dataset.")
+    else:
+        print(f"---LOG[eval]: Lenth of the eval data: {len(eval_loader)}.")
+        print(f"---LOG[eval]: Eval on {mymodel.av2_mode}.")
+        
+        eval_loader = DataLoader(
         HDF5Dataset(cfg.dataset_path + f"/{cfg.av2_mode}", 
                 n_frames=checkpoint_params.cfg.num_frames  if 'num_frames' in checkpoint_params.cfg else 2,
                 eval=True,
@@ -93,17 +89,21 @@ def main(cfg):
         # collate_fn=collate_fn_pad,
         # pin_memory=True,
         shuffle=False)
-        
-        
-    print(f"---LOG[eval]: Start evaluation on {cfg.dataset_path}/{cfg.av2_mode}.")
-    print(f"---LOG[eval]: Lenth of the eval data: {len(eval_loader)}, trainval data: {len(val_loader)}, with_trainval: {cfg.with_trainval}.")
-    
-    print(f"---LOG[eval]: Eval on {mymodel.av2_mode}.")
-    trainer.validate(model = mymodel, dataloaders = eval_loader)
+        trainer.validate(model = mymodel, dataloaders = eval_loader)
     
     if cfg.with_trainval:
+        val_loader = DataLoader(
+        HDF5Dataset(cfg.dataset_path + f"/{cfg.av2_mode}", #"/val", 
+                    n_frames=checkpoint_params.cfg.num_frames  if 'num_frames' in checkpoint_params.cfg else 2,
+                    ),
+        batch_size=1,
+        shuffle=False,
+        collate_fn=collate_fn_pad,
+        pin_memory=True)
+            
         mymodel.av2_mode = 'trainval'
         print("###"*20)
+        print(f"---LOG[eval]: Lenth of the val data: {len(val_loader)}.")
         print(f"---LOG[eval]: Eval on {mymodel.av2_mode}.")
         trainer.validate(model = mymodel, 
                         dataloaders = val_loader)
