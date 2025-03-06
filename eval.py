@@ -76,20 +76,20 @@ def main(cfg):
         cfg.with_trainval  = True
         print(f"---LOG[eval]: Eval on waymo dataset.")
     else:
-        print(f"---LOG[eval]: Lenth of the eval data: {len(eval_loader)}.")
-        print(f"---LOG[eval]: Eval on {mymodel.av2_mode}.")
-        
         eval_loader = DataLoader(
-        HDF5Dataset(cfg.dataset_path + f"/{cfg.av2_mode}", 
+            HDF5Dataset(cfg.dataset_path + f"/{cfg.av2_mode}", 
                 n_frames=checkpoint_params.cfg.num_frames  if 'num_frames' in checkpoint_params.cfg else 2,
                 eval=True,
                 using_pwpp_gm=cfg.using_pwpp_gm,
                 leaderboard_version=cfg.leaderboard_version),
-        batch_size=1,
-        # collate_fn=collate_fn_pad,
-        # pin_memory=True,
-        shuffle=False)
+            batch_size=1,
+            # collate_fn=collate_fn_pad,
+            # pin_memory=True,
+            shuffle=False)
         trainer.validate(model = mymodel, dataloaders = eval_loader)
+        
+        print(f"---LOG[eval]: Lenth of the eval data: {len(eval_loader)}.")
+        print(f"---LOG[eval]: Eval on {mymodel.av2_mode}.")
     
     if cfg.with_trainval:
         val_loader = DataLoader(
