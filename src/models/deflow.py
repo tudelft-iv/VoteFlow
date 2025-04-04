@@ -15,7 +15,7 @@ import pickle
 
 from .basic.unet import FastFlow3DUNet
 from .basic.encoder import DynamicEmbedder
-from .basic.decoder import LinearDecoder, ConvGRUDecoder
+from .basic.decoder import LinearDecoder, ConvGRUDecoder  
 from .basic import cal_pose0to1
 
 class DeFlow(nn.Module):

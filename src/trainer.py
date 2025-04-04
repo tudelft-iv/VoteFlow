@@ -389,10 +389,10 @@ class ModelWrapper(LightningModule):
         )
         pickle.dump(data_dict, open(file, 'wb'))
         
-        with h5py.File(os.path.join(self.dataset_path, f'{scene_id}.h5'), 'r+') as f:
-            if self.vis_name in f[key]:
-                del f[key][self.vis_name]
-            f[key].create_dataset(self.vis_name, data=final_flow.cpu().detach().numpy().astype(np.float32))
+        # with h5py.File(os.path.join(self.dataset_path, f'{scene_id}.h5'), 'r+') as f:
+        #     if self.vis_name in f[key]:
+        #         del f[key][self.vis_name]
+        #     f[key].create_dataset(self.vis_name, data=final_flow.cpu().detach().numpy().astype(np.float32))
 
     def on_test_epoch_end(self):
         self.model.timer.print(random_colors=False, bold=False)

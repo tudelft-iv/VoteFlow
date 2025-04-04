@@ -39,7 +39,7 @@ def main(cfg):
     cfg.model.update(checkpoint_params.cfg.model)
     mymodel = ModelWrapper.load_from_checkpoint(cfg.checkpoint, cfg=cfg, eval=True)
 
-    scene_id_list = cfg.scene_id
+    scene_id_list = cfg.scene_ids
     
     
     for scene_id in scene_id_list:

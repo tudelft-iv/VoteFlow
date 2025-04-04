@@ -51,7 +51,7 @@ def main(cfg):
     print(f"\n---LOG[eval]: Loaded model from {cfg.checkpoint}. The backbone network is {checkpoint_params.cfg.model.name}.\n")
 
     
-    output_dir = osp.join('output', exp_id, 'eval_per_scene')
+    output_dir = osp.join('outputs', exp_id, 'eval_per_scene')
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
     if isinstance(cfg.gpus, ListConfig):
