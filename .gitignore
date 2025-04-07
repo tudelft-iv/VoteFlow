@@ -27,10 +27,6 @@ cancel.sh
 *.err
 *.out
 
-# figure
-*.png
-*.pdf
-
 # cuda build files
 *.egg-info
 build*
