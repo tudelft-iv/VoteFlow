@@ -1,17 +1,14 @@
-# SceneFlow by Translation Voting
-## Goal
-Incorporate the customized voting layer into ZeroFlow and use the cycle nn loss for unsupervised training.
+# VoteFlow: Enforcing Local Rigidity in Self-Supervised Scene Flow
+Yancong Lin*, Shiming Wang*, Liangliang Nan, Julian Kooij, Holger Caesar
+
+[![arXiv](https://img.shields.io/badge/arXiv-2503.22328-b31b1b?logo=arxiv&logoColor=white)](https://arxiv.org/abs/2503.22328)
+
+![](assets/docs/voteflow_arch.png)
 
 ## TODO
-- [x] test the sf-voxel model
-- [ ] solve the training issue of deflow model
-
-## Update Log
-+ 2024.09.21 change to the codebase of [SeFlow](https://github.com/KTH-RPL/SeFlow)([README.md](./README_SeFlow.md))
-+ 2024.09.19 update the sf-voxel model
-+ 2024.07.04 build singularity environment on iv-mind ([image](https://surfdrive.surf.nl/files/index.php/s/BzXUog7XhThwRUf))
-+ 2024.07.01 build a new branch based on [SceneFlowZoo](https://github.com/kylevedder/SceneFlowZoo)
-
+- [ ] Add more details to the README
+- [ ] Update the trained weights
+- [ ] Adapt the name of our method in the codebase
 ## Installation
 ```bash
 conda env create -f environment.yaml
@@ -69,9 +66,3 @@ visualize with our tool
 ```python
 python o3d_visualization.py index=17 res_name=sf_voxel_model  
 ```
-
-## Training Curves
-
-[FastFlow3D(warped_loss)](https://api.wandb.ai/links/shimingwang/v2qjgglj)
-
-[FastFlow3D(supervised loss)](https://api.wandb.ai/links/shimingwang/h9nxrmel)
