@@ -9,6 +9,7 @@ Yancong Lin*, Shiming Wang*, Liangliang Nan, Julian Kooij, Holger Caesar
 - [ ] Add more details to the README
 - [ ] Update the trained weights
 - [ ] Adapt the name of our method in the codebase
+
 ## Installation
 ```bash
 conda env create -f environment.yaml
@@ -66,3 +67,7 @@ visualize with our tool
 ```python
 python o3d_visualization.py index=17 res_name=sf_voxel_model  
 ```
+
+## Acknowledgements
+This code is mainly based on the [SeFlow](https://github.com/KTH-RPL/SeFlow) code by Qingwen Zhang. Thanks for her great work and codebase.
+<!-- Additionally, we would like to express our sincere thanks to Kyle Vedder et al. for hosting and providing extensive support for Argoverse2 2024 Scene Flow Challenge -->

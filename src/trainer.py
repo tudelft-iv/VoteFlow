@@ -84,7 +84,7 @@ class ModelWrapper(LightningModule):
             self.save_res = cfg.save_res if 'save_res' in cfg else False
             
             if self.save_res or self.av2_mode == 'test':
-                self.save_res_path = Path(cfg.dataset_path).parent / "results" / cfg.output
+                self.save_res_path = Path("logs") / "results" / cfg.output
                 os.makedirs(self.save_res_path, exist_ok=True)
                 print(f"We are in {cfg.av2_mode}, results will be saved in: {self.save_res_path} with version: {self.leaderboard_version} format for online leaderboard.")
         else:
