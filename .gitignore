@@ -8,6 +8,9 @@ remote_outputs/
 *.json
 logs/*
 slurm_logs/*
+lightning_logs/*
+notebooks/*
+remote_mounted/*
 *.pyc
 
 tmp_sbatch.sh
