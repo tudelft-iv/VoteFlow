@@ -19,7 +19,7 @@ import warnings
 warnings.filterwarnings('ignore')
 np.set_printoptions(suppress=True)
 
-class SFVoxelModel(nn.Module):
+class VoteFlow(nn.Module):
     def __init__(self, 
                  nframes=1, 
                  m=8, 

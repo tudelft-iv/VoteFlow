@@ -1,7 +1,7 @@
 
 defaults:
   - hydra: default
-  - model: deflow
+  - model: voteflow
   
 slurm_id: 00000000
 exp_note: None

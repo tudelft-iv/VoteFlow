@@ -437,9 +437,15 @@ class DynamicPillarFeatureNet(PillarFeatureNet):
         features_ls = [features]
         # Find distance of x, y, and z from cluster center
         if self._with_cluster_center:
+            # print('In DynamicPFN:')
+            # print(' features:', features.shape)
+            # print(' coors:', coors.shape)
             voxel_mean, mean_coors = self.cluster_scatter(features, coors)
+            # print(' voxel_mean after cluster scatter:', voxel_mean.shape)
+            # print(' mean_coors after cluster scatter:', mean_coors.shape)
             points_mean = self.map_voxel_center_to_point(
                 coors, voxel_mean, mean_coors)
+            # print(' points_mean:', points_mean.shape)
             # TODO: maybe also do cluster for reflectivity
             f_cluster = features[:, :3] - points_mean[:, :3]
             features_ls.append(f_cluster)
@@ -462,14 +468,21 @@ class DynamicPillarFeatureNet(PillarFeatureNet):
         # Combine together feature decorations
         features = torch.cat(features_ls, dim=-1)
         for i, pfn in enumerate(self.pfn_layers):
+            # print('In DynamicPFN:')
+            # print(' features:', features.shape)
             point_feats = pfn(features)
+            # print(' point_feats:', point_feats.shape)
             voxel_feats, voxel_coors = self.pfn_scatter(point_feats, coors)
             if i != len(self.pfn_layers) - 1:
                 # need to concat voxel feats if it is not the last pfn
                 feat_per_point = self.map_voxel_center_to_point(
                     coors, voxel_feats, voxel_coors)
                 features = torch.cat([point_feats, feat_per_point], dim=1)
-
+        # print('After PFN:')
+        # print(' voxel_feats after dynamic scatter:', voxel_feats.shape)
+        # print(' voxel_coors after dynamic scatter::', voxel_coors.shape)
+        # print(' point_feats:', point_feats.shape)
+        # The feature decorations were calculated without regard to whether
         return voxel_feats, voxel_coors, point_feats
 
 class HardVoxelizer(nn.Module):
@@ -574,14 +587,26 @@ class DynamicEmbedder(nn.Module):
     def forward(self, points: torch.Tensor) -> torch.Tensor:
 
         # List of points and coordinates for each batch
+        # print('original points shape:', points.shape)
         voxel_info_list = self.voxelizer(points)
-
+        # print('voxel_info_list:', len(voxel_info_list))
+        # print('voxel_info_list:', voxel_info_list[0].keys())
+        # print('voxel_info_list[points]:', voxel_info_list[0]['points'].shape)
+        # print('voxel_info_list[voxel_coords]:', voxel_info_list[0]['voxel_coords'].shape)
+        # print('voxel_info_list[point_idxes]:', voxel_info_list[0]['point_idxes'].shape)
         pseudoimage_lst = []
         for voxel_info_dict in voxel_info_list:
             points = voxel_info_dict['points']
             coordinates = voxel_info_dict['voxel_coords']
+            # print('In DynamicEmbedder:')
+            # print(' points:', points.shape)
+            # print(' coordinates:', coordinates.shape)
             voxel_feats, voxel_coors, _ = self.feature_net(points, coordinates)
+            # print('After PFN:')
+            # print(' voxel_feats:', voxel_feats.shape)
+            # print(' voxel_coors:', voxel_coors.shape)
             pseudoimage = self.scatter(voxel_feats, voxel_coors)
+            # print(' pseudoimage:', pseudoimage.shape)
             pseudoimage_lst.append(pseudoimage)
         # Concatenate the pseudoimages along the batch dimension
         return torch.cat(pseudoimage_lst, dim=0), voxel_info_list

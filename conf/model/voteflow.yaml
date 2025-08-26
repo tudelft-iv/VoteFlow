@@ -1,7 +1,7 @@
-name: sf_voxel_model
+name: voteflow
 
 target:
-  _target_: src.models.SFVoxelModel
+  _target_: src.models.VoteFlow
   using_voting: True
   nframes: 1
   m: 8
