@@ -2,8 +2,9 @@
 Yancong Lin*, Shiming Wang*, Liangliang Nan, Julian Kooij, Holger Caesar
 
 [![arXiv](https://img.shields.io/badge/arXiv-2503.22328-b31b1b?logo=arxiv&logoColor=white)](https://arxiv.org/abs/2503.22328)
+[![YouTube Video Views](https://img.shields.io/youtube/views/38dQqMKGEEg)](https://www.youtube.com/watch?v=38dQqMKGEEg&t=163s&ab_channel=IntelligentVehiclesatTUDelft)
+[![CVPR2025](https://img.shields.io/badge/CVPR-2025-blue)](https://surfdrive.surf.nl/files/index.php/s/uJWqDaSKdrMRh6U)
 
-![](assets/docs/voteflow_arch.png)
 
 ## TODO
 - [ ] Add more details to the README
