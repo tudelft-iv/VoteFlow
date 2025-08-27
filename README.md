@@ -10,7 +10,7 @@ Yancong Lin*, Shiming Wang*, Liangliang Nan, Julian Kooij, Holger Caesar
 [Pretrained Weights(m8n128) Download](https://surfdrive.surf.nl/files/index.php/s/58QM2FeoSANooi5)
 
 ## Notice
-**Our method VoteFlow has been integrated in to the OpenSceneFlow.** Please check [OpenSceneFlow](https://github.com/KTH-RPL/OpenSceneFlow/tree/feature/voteflow?tab=readme-ov-file#VoteFLow) for the lastest updates and developments.
+**Our method VoteFlow has been integrated in to the OpenSceneFlow.** Please check [OpenSceneFlow](https://github.com/KTH-RPL/OpenSceneFlow) for the lastest updates and developments.
 
 ## Installation
 ```bash
